@@ -3,7 +3,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Modo Jogo - Digitação</title>
+<title>Modo Jogo PRO</title>
 
 <style>
 
@@ -23,20 +23,39 @@ left:10px;
 background:black;
 padding:10px;
 border-radius:8px;
+z-index:10;
 }
 
+/* mensagem grande */
+#msg{
+position:fixed;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:40px;
+font-weight:bold;
+opacity:0;
+transition:1s;
+}
+
+/* área jogo */
 #game{
 position:relative;
 width:100vw;
 height:100vh;
 }
 
-/* letras */
-.letter{
+/* palavras */
+.word{
 position:absolute;
-font-size:28px;
+font-size:26px;
 font-weight:bold;
 color:#00ff88;
+}
+
+/* palavra ativa */
+.active{
+color:yellow;
 }
 
 /* chão */
@@ -60,6 +79,8 @@ background:red;
 🚀 Nível: <span id="level">Fácil</span>
 </div>
 
+<div id="msg"></div>
+
 <div id="game"></div>
 <div id="ground"></div>
 
@@ -69,50 +90,69 @@ const game = document.getElementById("game")
 const lifeEl = document.getElementById("life")
 const timeEl = document.getElementById("time")
 const levelEl = document.getElementById("level")
+const msgEl = document.getElementById("msg")
 
-let letters = []
+let words = []
 let life = 10
 let time = 0
 
-let speed = 1
-let spawnRate = 1500
+let speed = 0.4
+let spawnRate = 2500
 
-/* cria letra */
-function spawnLetter(){
+let currentInput = ""
 
-let l = document.createElement("div")
-l.className="letter"
+/* banco de palavras */
+const wordList = [
+"casa","gato","tempo","codigo","teclado","rapido","foco",
+"energia","disciplina","javascript","computador","desafio",
+"velocidade","pratica","evolucao","jogador","controle"
+]
 
-let chars="asdfjklçqwertyuiopzxcvbnm"
-let char = chars[Math.floor(Math.random()*chars.length)]
+/* mensagem na tela */
+function showMessage(text){
+msgEl.innerText = text
+msgEl.style.opacity = 1
 
-l.innerText = char
+setTimeout(()=>{
+msgEl.style.opacity = 0
+},2000)
+}
 
-l.x = Math.random() * (window.innerWidth - 50)
-l.y = 0
+/* spawn palavra */
+function spawnWord(){
 
-l.style.left = l.x + "px"
-l.style.top = l.y + "px"
+let w = document.createElement("div")
+w.className="word"
 
-game.appendChild(l)
+let word = wordList[Math.floor(Math.random()*wordList.length)]
 
-letters.push({el:l, char:char, x:l.x, y:l.y})
+w.innerText = word
+
+w.x = Math.random() * (window.innerWidth - 150)
+w.y = 0
+
+w.style.left = w.x + "px"
+w.style.top = w.y + "px"
+
+game.appendChild(w)
+
+words.push({el:w, text:word, x:w.x, y:w.y})
 
 }
 
 /* loop */
 function update(){
 
-letters.forEach((obj,i)=>{
+words.forEach((obj,i)=>{
 
 obj.y += speed
 obj.el.style.top = obj.y + "px"
 
 /* chegou no chão */
-if(obj.y > window.innerHeight - 20){
+if(obj.y > window.innerHeight - 30){
 
 obj.el.remove()
-letters.splice(i,1)
+words.splice(i,1)
 
 life--
 lifeEl.innerText = life
@@ -136,37 +176,63 @@ document.addEventListener("keydown",(e)=>{
 
 let key = e.key.toLowerCase()
 
-letters.forEach((obj,i)=>{
-if(obj.char === key){
-
-obj.el.remove()
-letters.splice(i,1)
-
+if(key.length === 1){
+currentInput += key
 }
+
+/* verifica palavras */
+words.forEach((obj,i)=>{
+
+if(obj.text.startsWith(currentInput)){
+obj.el.classList.add("active")
+}else{
+obj.el.classList.remove("active")
+}
+
+/* acertou palavra */
+if(currentInput === obj.text){
+obj.el.remove()
+words.splice(i,1)
+currentInput = ""
+}
+
 })
+
+/* reset se errar muito */
+if(currentInput.length > 12){
+currentInput = ""
+}
 
 })
 
 /* spawn contínuo */
-setInterval(spawnLetter,spawnRate)
+setInterval(spawnWord, spawnRate)
 
-/* tempo + dificuldade */
+/* tempo + dificuldade (MAIS LENTO) */
 setInterval(()=>{
 
 time++
 timeEl.innerText = time
 
-/* progressão */
-if(time === 10){
-speed = 2
-spawnRate = 1000
+/* 🐢 FÁCIL (0-30s) */
+if(time === 30){
+speed = 0.8
+spawnRate = 2000
 levelEl.innerText="Médio"
+showMessage("⚡ Agora modo MÉDIO")
 }
 
-if(time === 25){
-speed = 3.5
-spawnRate = 600
+/* 😐 MÉDIO (30-70s) */
+if(time === 70){
+speed = 1.5
+spawnRate = 1400
 levelEl.innerText="Difícil"
+showMessage("🔥 Agora modo DIFÍCIL")
+}
+
+/* 🔥 progressivo */
+if(time > 70){
+speed += 0.01
 }
 
 },1000)
