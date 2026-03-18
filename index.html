@@ -3,153 +3,200 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Treino de Digitação</title>
+<title>Treino de Digitação PRO</title>
 
 <style>
 
 body{
 margin:0;
 font-family:Arial;
-background:#111;
-color:white;
 display:flex;
 flex-direction:column;
 align-items:center;
 padding:20px;
+transition:0.3s;
 }
 
-/* título */
-h1{
-margin-bottom:10px;
-}
+/* temas */
+.dark{ background:#111; color:white; }
+.light{ background:#f5f5f5; color:black; }
 
-/* caixa principal */
 .container{
 max-width:800px;
 width:100%;
 }
 
-/* texto */
 #text{
-background:#222;
 padding:20px;
 border-radius:10px;
 line-height:1.8;
 font-size:20px;
+background:rgba(0,0,0,0.2);
 }
 
-/* letras */
 .correct{ color:#00ff88; }
 .wrong{ color:#ff4d4d; }
 
-/* input */
 #input{
 width:100%;
 margin-top:20px;
 padding:15px;
 font-size:18px;
-border:none;
 border-radius:10px;
+border:none;
 outline:none;
 }
 
-/* stats */
 .stats{
 display:flex;
 justify-content:space-between;
 margin-top:20px;
 }
 
-/* botão */
-button{
-margin-top:20px;
-padding:10px 20px;
+button, select{
+margin-top:10px;
+padding:10px;
 border:none;
 border-radius:8px;
-background:#00ff88;
 cursor:pointer;
-font-weight:bold;
+}
+
+#history{
+margin-top:20px;
+font-size:14px;
+max-height:150px;
+overflow:auto;
 }
 
 </style>
 
 </head>
 
-<body>
+<body class="dark">
 
-<h1>⌨️ Treino de Digitação</h1>
+<h1>⌨️ Treino de Digitação PRO</h1>
 
 <div class="container">
+
+<button onclick="toggleTheme()">🌙 / ☀️ Tema</button>
+
+<br>
+
+<select id="level" onchange="startGame()">
+<option value="easy">Fácil</option>
+<option value="medium">Médio</option>
+<option value="hard">Difícil</option>
+</select>
 
 <div id="text"></div>
 
 <input id="input" placeholder="Comece a digitar..." autofocus>
 
 <div class="stats">
-<span>⏱️ Tempo: <span id="time">0</span>s</span>
-<span>⚡ WPM: <span id="wpm">0</span></span>
-<span>🎯 Precisão: <span id="accuracy">100</span>%</span>
+<span>⏱️ <span id="time">0</span>s</span>
+<span>⚡ <span id="wpm">0</span> WPM</span>
+<span>🎯 <span id="accuracy">100</span>%</span>
 </div>
 
 <button onclick="startGame()">🔁 Reiniciar</button>
+
+<div id="history"></div>
 
 </div>
 
 <script>
 
-const texts = [
-"o sucesso vem para quem pratica todos os dias",
-"digitar rapido e uma habilidade muito valiosa",
-"treine foco disciplina e velocidade sempre",
-"voce consegue melhorar com pratica constante"
+const texts = {
+easy:[
+"o gato corre no telhado",
+"eu gosto de programar",
+"digitar rapido ajuda muito"
+],
+medium:[
+"praticar digitacao melhora sua produtividade",
+"o sucesso depende da disciplina diaria",
+"javascript permite criar coisas incriveis"
+],
+hard:[
+"a persistencia e o caminho do exito verdadeiro",
+"desenvolver habilidades exige foco e consistencia",
+"tecnologia avanca rapidamente no mundo moderno"
 ]
+}
 
-let currentText = ""
+let currentText=""
 let startTime
-let timerInterval
+let timer
 
-const textEl = document.getElementById("text")
-const input = document.getElementById("input")
-const timeEl = document.getElementById("time")
-const wpmEl = document.getElementById("wpm")
-const accEl = document.getElementById("accuracy")
+const textEl=document.getElementById("text")
+const input=document.getElementById("input")
+const timeEl=document.getElementById("time")
+const wpmEl=document.getElementById("wpm")
+const accEl=document.getElementById("accuracy")
+const historyEl=document.getElementById("history")
+const levelEl=document.getElementById("level")
 
+/* tema */
+function toggleTheme(){
+document.body.classList.toggle("dark")
+document.body.classList.toggle("light")
+}
+
+/* som */
+function keySound(){
+let ctx=new AudioContext()
+let osc=ctx.createOscillator()
+osc.frequency.value=500
+osc.connect(ctx.destination)
+osc.start()
+setTimeout(()=>osc.stop(),50)
+}
+
+/* iniciar */
 function startGame(){
 
-currentText = texts[Math.floor(Math.random()*texts.length)]
-textEl.innerHTML = ""
+let level=levelEl.value
+let arr=texts[level]
 
-currentText.split("").forEach(char=>{
-let span = document.createElement("span")
-span.innerText = char
+currentText=arr[Math.floor(Math.random()*arr.length)]
+
+textEl.innerHTML=""
+
+currentText.split("").forEach(c=>{
+let span=document.createElement("span")
+span.innerText=c
 textEl.appendChild(span)
 })
 
-input.value = ""
+input.value=""
 input.focus()
 
-startTime = new Date()
+startTime=new Date()
 
-clearInterval(timerInterval)
-timerInterval = setInterval(updateTime,1000)
+clearInterval(timer)
+timer=setInterval(()=>{
+timeEl.innerText=Math.floor((new Date()-startTime)/1000)
+},1000)
 
 }
 
+/* digitação */
 input.addEventListener("input",()=>{
 
-let chars = textEl.querySelectorAll("span")
-let inputText = input.value
+keySound()
 
-let correct = 0
+let chars=textEl.querySelectorAll("span")
+let typed=input.value
 
-chars.forEach((char,index)=>{
+let correct=0
 
-let typed = inputText[index]
+chars.forEach((char,i)=>{
+let t=typed[i]
 
-if(typed == null){
+if(t==null){
 char.classList.remove("correct","wrong")
 }
-else if(typed === char.innerText){
+else if(t===char.innerText){
 char.classList.add("correct")
 char.classList.remove("wrong")
 correct++
@@ -157,26 +204,53 @@ correct++
 char.classList.add("wrong")
 char.classList.remove("correct")
 }
-
 })
 
 /* precisão */
-let accuracy = Math.floor((correct/inputText.length)*100) || 100
-accEl.innerText = accuracy
+let acc=Math.floor((correct/typed.length)*100)||100
+accEl.innerText=acc
 
-/* WPM */
-let time = (new Date() - startTime)/1000/60
-let words = inputText.length / 5
-let wpm = Math.floor(words / time) || 0
-wpmEl.innerText = wpm
+/* wpm */
+let time=(new Date()-startTime)/1000/60
+let words=typed.length/5
+let wpm=Math.floor(words/time)||0
+wpmEl.innerText=wpm
+
+/* terminou */
+if(typed === currentText){
+
+saveHistory(wpm,acc)
+startGame()
+
+}
 
 })
 
-function updateTime(){
-let time = Math.floor((new Date() - startTime)/1000)
-timeEl.innerText = time
+/* histórico */
+function saveHistory(wpm,acc){
+
+let data=JSON.parse(localStorage.getItem("history")||"[]")
+
+data.unshift(`WPM: ${wpm} | Precisão: ${acc}%`)
+
+localStorage.setItem("history",JSON.stringify(data.slice(0,10)))
+
+showHistory()
 }
 
+function showHistory(){
+
+let data=JSON.parse(localStorage.getItem("history")||"[]")
+
+historyEl.innerHTML="<h3>📊 Histórico</h3>"
+
+data.forEach(d=>{
+historyEl.innerHTML += "<div>"+d+"</div>"
+})
+
+}
+
+showHistory()
 startGame()
 
 </script>
