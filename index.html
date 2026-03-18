@@ -25,67 +25,38 @@ flex-direction:column;
 align-items:center;
 }
 
-/* ===== ASAS REALISTAS ===== */
+/* ===== ASAS PNG ===== */
 
 .wings{
 position:absolute;
-top:0px;
-width:140px;
+top:-15px;
+width:160px;
 display:flex;
 justify-content:space-between;
 pointer-events:none;
 }
 
-/* cada asa */
+/* asas */
 .wing{
-position:relative;
-width:60px;
-height:80px;
-animation:flap 0.6s infinite ease-in-out alternate;
+width:80px;
+animation:flapLeft 0.5s infinite alternate ease-in-out;
 }
 
-/* penas */
-.feather{
-position:absolute;
-width:22px;
-height:45px;
-background:white;
-border:2px solid green;
-border-radius:50%;
+/* direita invertida */
+.wing.right{
+transform:scaleX(-1);
+animation:flapRight 0.5s infinite alternate ease-in-out;
 }
 
-/* esquerda */
-.wing.left .feather:nth-child(1){
-left:25px; top:0; transform:rotate(-10deg);
-}
-.wing.left .feather:nth-child(2){
-left:15px; top:15px; transform:rotate(-20deg);
-}
-.wing.left .feather:nth-child(3){
-left:5px; top:30px; transform:rotate(-30deg);
-}
-.wing.left .feather:nth-child(4){
-left:-5px; top:45px; transform:rotate(-40deg);
+/* animações diferentes (mais realista) */
+@keyframes flapLeft{
+from{ transform:translateY(0px) rotate(-5deg); }
+to{ transform:translateY(-12px) rotate(10deg); }
 }
 
-/* direita */
-.wing.right .feather:nth-child(1){
-right:25px; top:0; transform:rotate(10deg);
-}
-.wing.right .feather:nth-child(2){
-right:15px; top:15px; transform:rotate(20deg);
-}
-.wing.right .feather:nth-child(3){
-right:5px; top:30px; transform:rotate(30deg);
-}
-.wing.right .feather:nth-child(4){
-right:-5px; top:45px; transform:rotate(40deg);
-}
-
-/* animação */
-@keyframes flap{
-from{ transform:translateY(0px) rotate(0deg); }
-to{ transform:translateY(-6px) rotate(6deg); }
+@keyframes flapRight{
+from{ transform:scaleX(-1) translateY(0px) rotate(5deg); }
+to{ transform:scaleX(-1) translateY(-12px) rotate(-10deg); }
 }
 
 /* cabeça */
@@ -96,6 +67,7 @@ height:40px;
 background:#f1c27d;
 border:2px solid black;
 position:relative;
+z-index:2;
 }
 
 .eye{
@@ -128,6 +100,7 @@ height:50px;
 background:#3cb043;
 border:2px solid black;
 position:relative;
+z-index:2;
 }
 
 /* braços */
@@ -150,6 +123,7 @@ transform-origin:top;
 .legs{
 display:flex;
 gap:10px;
+z-index:2;
 }
 
 .leg{
@@ -217,21 +191,8 @@ background:#5a3d1e;
 <div id="player">
 
 <div class="wings">
-
-<div class="wing left">
-<div class="feather"></div>
-<div class="feather"></div>
-<div class="feather"></div>
-<div class="feather"></div>
-</div>
-
-<div class="wing right">
-<div class="feather"></div>
-<div class="feather"></div>
-<div class="feather"></div>
-<div class="feather"></div>
-</div>
-
+<img src="asa.png" class="wing left">
+<img src="asa.png" class="wing right">
 </div>
 
 <div class="head">
@@ -271,7 +232,6 @@ keys[e.key.toLowerCase()] = true
 if(e.key === "Shift"){
 shootFire()
 }
-
 })
 
 document.addEventListener("keyup",(e)=>{
