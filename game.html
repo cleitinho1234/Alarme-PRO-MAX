@@ -15,7 +15,6 @@ background:#111;
 color:white;
 }
 
-/* HUD */
 #hud{
 position:fixed;
 top:10px;
@@ -26,45 +25,27 @@ border-radius:8px;
 z-index:10;
 }
 
-/* mensagem grande */
-#msg{
-position:fixed;
-top:40%;
-left:50%;
-transform:translate(-50%,-50%);
-font-size:40px;
-font-weight:bold;
-opacity:0;
-transition:1s;
-}
-
-/* área jogo */
 #game{
 position:relative;
 width:100vw;
 height:100vh;
 }
 
-/* palavras */
+/* palavra */
 .word{
 position:absolute;
 font-size:26px;
 font-weight:bold;
+white-space:nowrap;
+}
+
+/* letras */
+.letter{
 color:#00ff88;
 }
 
-/* palavra ativa */
-.active{
+.correct{
 color:yellow;
-}
-
-/* chão */
-#ground{
-position:absolute;
-bottom:0;
-width:100%;
-height:5px;
-background:red;
 }
 
 </style>
@@ -75,22 +56,16 @@ background:red;
 
 <div id="hud">
 ❤️ Vida: <span id="life">10</span><br>
-⏱️ Tempo: <span id="time">0</span>s<br>
-🚀 Nível: <span id="level">Fácil</span>
+⏱️ Tempo: <span id="time">0</span>s
 </div>
 
-<div id="msg"></div>
-
 <div id="game"></div>
-<div id="ground"></div>
 
 <script>
 
 const game = document.getElementById("game")
 const lifeEl = document.getElementById("life")
 const timeEl = document.getElementById("time")
-const levelEl = document.getElementById("level")
-const msgEl = document.getElementById("msg")
 
 let words = []
 let life = 10
@@ -101,62 +76,68 @@ let spawnRate = 2500
 
 let currentInput = ""
 
-/* banco de palavras */
+/* palavras */
 const wordList = [
-"casa","gato","tempo","codigo","teclado","rapido","foco",
-"energia","disciplina","javascript","computador","desafio",
-"velocidade","pratica","evolucao","jogador","controle"
+"casa","gato","tempo","codigo","teclado","rapido",
+"energia","disciplina","javascript","computador",
+"desafio","velocidade","pratica","evolucao"
 ]
 
-/* mensagem na tela */
-function showMessage(text){
-msgEl.innerText = text
-msgEl.style.opacity = 1
+/* evita sobreposição */
+let lastX = 0
 
-setTimeout(()=>{
-msgEl.style.opacity = 0
-},2000)
-}
-
-/* spawn palavra */
 function spawnWord(){
+
+let word = wordList[Math.floor(Math.random()*wordList.length)]
 
 let w = document.createElement("div")
 w.className="word"
 
-let word = wordList[Math.floor(Math.random()*wordList.length)]
+/* cria letras separadas */
+word.split("").forEach(c=>{
+let span = document.createElement("span")
+span.innerText = c
+span.className = "letter"
+w.appendChild(span)
+})
 
-w.innerText = word
+/* posição organizada */
+let x = Math.random() * (window.innerWidth - 200)
 
-w.x = Math.random() * (window.innerWidth - 150)
+/* evita nascer muito perto da anterior */
+if(Math.abs(x - lastX) < 120){
+x += 150
+}
+
+lastX = x
+
+w.x = x
 w.y = 0
+w.text = word
+w.typed = 0
 
-w.style.left = w.x + "px"
-w.style.top = w.y + "px"
+w.style.left = x + "px"
+w.style.top = "0px"
 
 game.appendChild(w)
 
-words.push({el:w, text:word, x:w.x, y:w.y})
-
+words.push(w)
 }
 
 /* loop */
 function update(){
 
-words.forEach((obj,i)=>{
+words.forEach((w,i)=>{
 
-obj.y += speed
-obj.el.style.top = obj.y + "px"
+w.y += speed
+w.style.top = w.y + "px"
 
 /* chegou no chão */
-if(obj.y > window.innerHeight - 30){
-
-obj.el.remove()
+if(w.y > window.innerHeight - 40){
+w.remove()
 words.splice(i,1)
-
 life--
 lifeEl.innerText = life
-
 }
 
 })
@@ -171,69 +152,48 @@ requestAnimationFrame(update)
 
 update()
 
-/* digitação */
+/* digitação REAL */
 document.addEventListener("keydown",(e)=>{
 
 let key = e.key.toLowerCase()
 
-if(key.length === 1){
-currentInput += key
-}
+words.forEach((w,i)=>{
 
-/* verifica palavras */
-words.forEach((obj,i)=>{
+let letters = w.querySelectorAll("span")
 
-if(obj.text.startsWith(currentInput)){
-obj.el.classList.add("active")
-}else{
-obj.el.classList.remove("active")
-}
+/* verifica próxima letra */
+if(key === w.text[w.typed]){
 
-/* acertou palavra */
-if(currentInput === obj.text){
-obj.el.remove()
+letters[w.typed].classList.add("correct")
+w.typed++
+
+/* terminou palavra */
+if(w.typed === w.text.length){
+w.remove()
 words.splice(i,1)
 currentInput = ""
 }
 
-})
-
-/* reset se errar muito */
-if(currentInput.length > 12){
-currentInput = ""
+}else{
+/* errou = reseta progresso dessa palavra */
+w.typed = 0
+letters.forEach(l=>l.classList.remove("correct"))
 }
 
 })
 
-/* spawn contínuo */
+})
+
+/* spawn */
 setInterval(spawnWord, spawnRate)
 
-/* tempo + dificuldade (MAIS LENTO) */
+/* tempo */
 setInterval(()=>{
-
 time++
 timeEl.innerText = time
 
-/* 🐢 FÁCIL (0-30s) */
-if(time === 30){
-speed = 0.8
-spawnRate = 2000
-levelEl.innerText="Médio"
-showMessage("⚡ Agora modo MÉDIO")
-}
-
-/* 😐 MÉDIO (30-70s) */
-if(time === 70){
-speed = 1.5
-spawnRate = 1400
-levelEl.innerText="Difícil"
-showMessage("🔥 Agora modo DIFÍCIL")
-}
-
-/* 🔥 progressivo */
-if(time > 70){
-speed += 0.01
-}
+/* dificuldade suave */
+speed += 0.003
 
 },1000)
 
