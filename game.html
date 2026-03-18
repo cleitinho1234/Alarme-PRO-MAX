@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Modo Jogo - Digitação</title>
+
+<style>
+
+body{
+margin:0;
+overflow:hidden;
+font-family:Arial;
+background:#111;
+color:white;
+}
+
+/* HUD */
+#hud{
+position:fixed;
+top:10px;
+left:10px;
+background:black;
+padding:10px;
+border-radius:8px;
+}
+
+#game{
+position:relative;
+width:100vw;
+height:100vh;
+}
+
+/* letras */
+.letter{
+position:absolute;
+font-size:28px;
+font-weight:bold;
+color:#00ff88;
+}
+
+/* chão */
+#ground{
+position:absolute;
+bottom:0;
+width:100%;
+height:5px;
+background:red;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="hud">
+❤️ Vida: <span id="life">10</span><br>
+⏱️ Tempo: <span id="time">0</span>s<br>
+🚀 Nível: <span id="level">Fácil</span>
+</div>
+
+<div id="game"></div>
+<div id="ground"></div>
+
+<script>
+
+const game = document.getElementById("game")
+const lifeEl = document.getElementById("life")
+const timeEl = document.getElementById("time")
+const levelEl = document.getElementById("level")
+
+let letters = []
+let life = 10
+let time = 0
+
+let speed = 1
+let spawnRate = 1500
+
+/* cria letra */
+function spawnLetter(){
+
+let l = document.createElement("div")
+l.className="letter"
+
+let chars="asdfjklçqwertyuiopzxcvbnm"
+let char = chars[Math.floor(Math.random()*chars.length)]
+
+l.innerText = char
+
+l.x = Math.random() * (window.innerWidth - 50)
+l.y = 0
+
+l.style.left = l.x + "px"
+l.style.top = l.y + "px"
+
+game.appendChild(l)
+
+letters.push({el:l, char:char, x:l.x, y:l.y})
+
+}
+
+/* loop */
+function update(){
+
+letters.forEach((obj,i)=>{
+
+obj.y += speed
+obj.el.style.top = obj.y + "px"
+
+/* chegou no chão */
+if(obj.y > window.innerHeight - 20){
+
+obj.el.remove()
+letters.splice(i,1)
+
+life--
+lifeEl.innerText = life
+
+}
+
+})
+
+if(life <= 0){
+alert("GAME OVER")
+location.reload()
+}
+
+requestAnimationFrame(update)
+}
+
+update()
+
+/* digitação */
+document.addEventListener("keydown",(e)=>{
+
+let key = e.key.toLowerCase()
+
+letters.forEach((obj,i)=>{
+if(obj.char === key){
+
+obj.el.remove()
+letters.splice(i,1)
+
+}
+})
+
+})
+
+/* spawn contínuo */
+setInterval(spawnLetter,spawnRate)
+
+/* tempo + dificuldade */
+setInterval(()=>{
+
+time++
+timeEl.innerText = time
+
+/* progressão */
+if(time === 10){
+speed = 2
+spawnRate = 1000
+levelEl.innerText="Médio"
+}
+
+if(time === 25){
+speed = 3.5
+spawnRate = 600
+levelEl.innerText="Difícil"
+}
+
+},1000)
+
+</script>
+
+</body>
+</html>
