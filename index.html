@@ -3,35 +3,58 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Alarme PRO</title>
+<title>Alarme PRO+</title>
 
 <style>
 body {
-    background: #111;
+    background: #0f172a;
     color: white;
     font-family: Arial;
     text-align: center;
     padding: 20px;
 }
 
+h1 {
+    margin-bottom: 20px;
+}
+
 input, button {
     padding: 10px;
     margin: 5px;
     font-size: 16px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    cursor: pointer;
+}
+
+#lista {
+    margin-top: 20px;
 }
 
 .alarm {
-    background: #222;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 10px;
+    background: #1e293b;
+    padding: 15px;
+    margin: 10px auto;
+    border-radius: 12px;
+    width: 250px;
+}
+
+.ativo {
+    color: #22c55e;
+}
+
+.desligado {
+    color: #ef4444;
 }
 </style>
 
 </head>
 <body>
 
-<h1>⏰ Alarme PRO</h1>
+<h1>⏰ Alarme PRO+</h1>
 
 <input type="time" id="hora">
 <br>
@@ -39,7 +62,7 @@ input, button {
 <input type="file" id="audioFile" accept="audio/*">
 <br>
 
-<button onclick="adicionarAlarme()">Adicionar Alarme</button>
+<button onclick="adicionarAlarme()">Adicionar</button>
 
 <div id="lista"></div>
 
@@ -81,6 +104,12 @@ function remover(index) {
     render();
 }
 
+function toggle(index) {
+    alarmes[index].ativo = !alarmes[index].ativo;
+    salvar();
+    render();
+}
+
 function render() {
     const lista = document.getElementById("lista");
     lista.innerHTML = "";
@@ -88,13 +117,19 @@ function render() {
     alarmes.forEach((a, i) => {
         lista.innerHTML += `
         <div class="alarm">
-            ⏰ ${a.hora}
-            <br>
+            <h3>${a.hora}</h3>
+            <p class="${a.ativo ? 'ativo' : 'desligado'}">
+                ${a.ativo ? 'Ativo' : 'Desligado'}
+            </p>
+
+            <button onclick="toggle(${i})">Ligar/Desligar</button>
             <button onclick="remover(${i})">Remover</button>
         </div>
         `;
     });
 }
+
+let tocando = null;
 
 setInterval(() => {
     const agora = new Date();
@@ -104,20 +139,27 @@ setInterval(() => {
 
     alarmes.forEach(a => {
         if (a.hora === atual && a.ativo) {
-            let audio;
 
-            if (a.audio) {
-                audio = new Audio(a.audio);
-            } else {
-                audio = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+            if (!tocando) {
+
+                tocando = new Audio(a.audio || "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+                tocando.loop = true; // 🔥 toca contínuo
+                tocando.play();
+
+                // parar depois de 30 segundos
+                setTimeout(() => {
+                    if (tocando) {
+                        tocando.pause();
+                        tocando = null;
+                    }
+                }, 30000);
+
+                a.ativo = false;
+                salvar();
+                render();
             }
-
-            audio.play();
-            a.ativo = false;
         }
     });
-
-    salvar();
 
 }, 1000);
 
