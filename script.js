@@ -1,13 +1,7 @@
 const luffy = document.getElementById("luffy");
 
 let x = 50;
-let y = 50;
-
-let frame = 0;
-let frameWidth = 48;
-let frameHeight = 48;
-
-let linha = 1; // linha da animação
+let y = 100;
 
 let teclas = {};
 
@@ -22,34 +16,24 @@ teclas[e.key] = false;
 function loop() {
 
 ```
-let andando = false;
-
 if (teclas["ArrowRight"]) {
-    x += 4;
-    linha = 1;
-    andando = true;
+    x += 5;
 }
 
 if (teclas["ArrowLeft"]) {
-    x -= 4;
-    linha = 1;
-    andando = true;
+    x -= 5;
 }
 
-if (andando) {
-    frame++;
-    if (frame > 5) frame = 0;
-} else {
-    frame = 0;
+if (teclas["ArrowUp"]) {
+    y -= 5;
+}
+
+if (teclas["ArrowDown"]) {
+    y += 5;
 }
 
 luffy.style.left = x + "px";
 luffy.style.top = y + "px";
-
-let posX = frame * frameWidth;
-let posY = linha * frameHeight;
-
-luffy.style.backgroundPosition = `-${posX}px -${posY}px`;
 
 requestAnimationFrame(loop);
 ```
