@@ -3,61 +3,43 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alarme PRO MAX</title>
 
 <style>
 body {
-    background: #0f172a;
-    color: white;
-    font-family: Arial;
-    text-align: center;
-    padding: 20px;
+    background:#0f172a;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+    padding:20px;
 }
 
 button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
+    padding:12px;
+    margin:5px;
+    border:none;
+    border-radius:10px;
 }
 
-#lista {
-    margin-top: 20px;
-}
+#lista { margin-top:20px; }
 
 .alarm {
-    background: #1e293b;
-    padding: 15px;
-    margin: 10px auto;
-    border-radius: 12px;
-    width: 260px;
+    background:#1e293b;
+    padding:15px;
+    margin:10px auto;
+    border-radius:12px;
+    width:260px;
 }
 
-.ativo { color: #22c55e; }
-.desligado { color: #ef4444; }
-
-#parar {
-    background: red;
-    display: none;
-}
-
-input[type="file"] {
-    display: none;
-}
-
-.file-btn {
-    background: #334155;
-    color: white;
-}
+#parar { background:red; display:none; }
+#soneca { background:orange; display:none; }
 
 .modal {
-    position: fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background: rgba(0,0,0,0.7);
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.7);
     display:none;
     justify-content:center;
     align-items:center;
@@ -76,142 +58,79 @@ input[type="file"] {
 
 <h1>⏰ Alarme PRO MAX</h1>
 
-<button onclick="abrirModal()">+ Novo Alarme</button>
-
-<br><br> <button id="parar" onclick="pararAlarme()">PARAR ALARME</button>
+<button onclick="abrirModal()">+ Novo</button> <button id="parar" onclick="pararAlarme()">PARAR</button> <button id="soneca" onclick="soneca()">Soneca +5min</button>
 
 <div id="lista"></div>
 
-<!-- MODAL ADICIONAR -->
-
 <div id="modal" class="modal">
-    <div class="box">
-        <h3>Novo Alarme</h3>
-
-```
-    <input type="text" id="hora" placeholder="HH:MM" maxlength="5"><br>
-
-    <p id="nomeAudio">Nenhum som selecionado</p>
-
-    <button class="file-btn" onclick="inputAudio.click()">
-        Escolha seu som
-    </button>
-
-    <input type="file" id="inputAudio" accept="audio/*">
-
-    <br><br>
-    <button onclick="salvarAlarme()">Salvar</button>
-    <button onclick="fecharModal()">Cancelar</button>
+<div class="box">
+<input type="text" id="hora" placeholder="HH:MM"><br><br>
+<input type="file" id="audioFile" accept="audio/*"><br><br>
+<button onclick="salvarAlarme()">Salvar</button>
 </div>
-```
-
-</div>
-
-<!-- MODAL EDITAR -->
-
-<div id="modalEdit" class="modal">
-    <div class="box">
-        <h3>Editar Alarme</h3>
-        <input type="text" id="editarHora" maxlength="5"><br><br>
-        <button onclick="salvarEdicao()">Salvar</button>
-        <button onclick="fecharEdit()">Cancelar</button>
-    </div>
 </div>
 
 <script>
 let alarmes = JSON.parse(localStorage.getItem("alarmes")) || [];
 
-let tocando = null;
-let repetindo = false;
-let timeoutAtual = null;
-let ultimoDisparo = "";
-let alarmeAtualIndex = null;
-let indiceEditando = null;
+let tocando=null;
+let repetindo=false;
+let timeoutAtual=null;
+let ultimoDisparo="";
+let alarmeAtualIndex=null;
 
-function salvar() {
+function salvar(){
     localStorage.setItem("alarmes", JSON.stringify(alarmes));
 }
 
-// FORMATAR HORA
-function formatar(input){
-    input.addEventListener("input", ()=>{
-        let v = input.value.replace(/\D/g,"");
-        if(v.length>=3) v = v.slice(0,2)+":"+v.slice(2,4);
-        input.value = v;
-    });
-}
-
-formatar(document.getElementById("hora"));
-formatar(document.getElementById("editarHora"));
-
-// AUDIO
-const inputAudio = document.getElementById("inputAudio");
-
-inputAudio.addEventListener("change", ()=>{
-    let file = inputAudio.files[0];
-    document.getElementById("nomeAudio").innerText =
-        file ? file.name : "Nenhum som selecionado";
+// FORMATO HORA
+document.getElementById("hora").addEventListener("input", e=>{
+    let v=e.target.value.replace(/\D/g,"");
+    if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2,4);
+    e.target.value=v;
 });
 
-// MODAIS
+// MODAL
 function abrirModal(){
     document.getElementById("modal").style.display="flex";
 }
 
-function fecharModal(){
-    document.getElementById("modal").style.display="none";
-}
-
-function abrirEditar(i){
-    indiceEditando = i;
-    document.getElementById("modalEdit").style.display="flex";
-    document.getElementById("editarHora").value = alarmes[i].hora;
-}
-
-function fecharEdit(){
-    document.getElementById("modalEdit").style.display="none";
-}
-
-// ADD
+// CRIAR
 function salvarAlarme(){
-    const hora = document.getElementById("hora").value;
-    const file = inputAudio.files[0];
+    let hora=document.getElementById("hora").value;
+    let file=document.getElementById("audioFile").files[0];
 
-    if(!hora || hora.length<5) return alert("Hora inválida");
+    if(!hora) return;
 
     if(file){
-        const reader = new FileReader();
-        reader.onload = (e)=>{
-            alarmes.push({hora, audio:e.target.result, ativo:true});
-            salvar(); render(); fecharModal();
-        };
-        reader.readAsDataURL(file);
+        let r=new FileReader();
+        r.onload=e=>{
+            alarmes.push({hora,audio:e.target.result,ativo:true});
+            salvar(); render();
+        }
+        r.readAsDataURL(file);
     } else {
-        alarmes.push({hora, audio:"", ativo:true});
-        salvar(); render(); fecharModal();
+        alarmes.push({hora,audio:"",ativo:true});
+        salvar(); render();
     }
 }
 
-// EDITAR
-function salvarEdicao(){
-    let nova = document.getElementById("editarHora").value;
-
-    if(!nova || nova.length<5){
-        alert("Hora inválida");
-        return;
-    }
-
-    alarmes[indiceEditando].hora = nova;
-    alarmes[indiceEditando].ativo = true;
-
-    salvar();
-    render();
-    fecharEdit();
+// RENDER
+function render(){
+    let lista=document.getElementById("lista");
+    lista.innerHTML="";
+    alarmes.forEach((a,i)=>{
+        lista.innerHTML+=`
+        <div class="alarm">
+        <h3>${a.hora}</h3>
+        <button onclick="toggle(${i})">On/Off</button>
+        <button onclick="remover(${i})">X</button>
+        </div>`;
+    });
 }
 
-// CONTROLES
 function toggle(i){
-    alarmes[i].ativo = !alarmes[i].ativo;
+    alarmes[i].ativo=!alarmes[i].ativo;
     salvar(); render();
 }
 
@@ -220,82 +139,94 @@ function remover(i){
     salvar(); render();
 }
 
-// RENDER
-function render(){
-    let lista = document.getElementById("lista");
-    lista.innerHTML="";
-
-    alarmes.forEach((a,i)=>{
-        lista.innerHTML+=`
-        <div class="alarm">
-            <h3>${a.hora}</h3>
-            <p class="${a.ativo?'ativo':'desligado'}">${a.ativo?'Ativo':'Desligado'}</p>
-
-            <button onclick="toggle(${i})">On/Off</button>
-            <button onclick="abrirEditar(${i})">Editar</button>
-            <button onclick="remover(${i})">Remover</button>
-        </div>`;
-    });
-}
-
-// PARAR (100% REAL)
+// 🔴 PARAR
 function pararAlarme(){
-    repetindo = false;
+    repetindo=false;
 
     if(tocando){
         tocando.pause();
-        tocando.currentTime = 0;
-        tocando = null;
+        tocando.currentTime=0;
+        tocando=null;
     }
 
     if(timeoutAtual){
         clearTimeout(timeoutAtual);
-        timeoutAtual = null;
+        timeoutAtual=null;
     }
 
-    if(alarmeAtualIndex !== null){
-        alarmes[alarmeAtualIndex].ativo = false;
-        salvar();
-        render();
+    if(alarmeAtualIndex!=null){
+        alarmes[alarmeAtualIndex].ativo=false;
+        salvar(); render();
     }
 
     document.getElementById("parar").style.display="none";
+    document.getElementById("soneca").style.display="none";
 }
 
-// ALARME
-setInterval(()=>{
-    let d = new Date();
-    let atual = d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+// 🟠 SONECA +5 MIN
+function soneca(){
+    let agora=new Date();
 
-    alarmes.forEach((a,i)=>{
-        if(a.hora === atual && a.ativo && !repetindo && ultimoDisparo !== atual){
+    agora.setMinutes(agora.getMinutes()+5);
 
-            ultimoDisparo = atual;
-            repetindo = true;
-            alarmeAtualIndex = i;
+    let h = agora.getHours().toString().padStart(2,"0");
+    let m = agora.getMinutes().toString().padStart(2,"0");
 
-            document.getElementById("parar").style.display="inline-block";
+    let novaHora = h+":"+m;
 
-            function tocar(){
-                if(!repetindo) return;
+    let audio = "";
 
-                tocando = new Audio(a.audio || "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
-                tocando.play();
+    if(alarmeAtualIndex!=null){
+        audio = alarmes[alarmeAtualIndex].audio;
+        alarmes[alarmeAtualIndex].ativo=false;
+    }
 
-                timeoutAtual = setTimeout(()=>{
-                    if(tocando){
-                        tocando.pause();
-                        tocando.currentTime = 0;
-                        tocando = null;
-                    }
-                    tocar();
-                },30000);
-            }
-
-            tocar();
-        }
+    alarmes.push({
+        hora:novaHora,
+        audio:audio,
+        ativo:true
     });
 
+    salvar();
+    render();
+
+    pararAlarme();
+}
+
+// ⏰ SISTEMA
+setInterval(()=>{
+let d=new Date();
+let atual=d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+
+alarmes.forEach((a,i)=>{
+if(a.hora===atual && a.ativo && !repetindo && ultimoDisparo!==atual){
+
+ultimoDisparo=atual;
+repetindo=true;
+alarmeAtualIndex=i;
+
+document.getElementById("parar").style.display="inline-block";
+document.getElementById("soneca").style.display="inline-block";
+
+function tocar(){
+if(!repetindo) return;
+
+tocando=new Audio(a.audio||"https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+tocando.play();
+
+timeoutAtual=setTimeout(()=>{
+if(tocando){
+tocando.pause();
+tocando.currentTime=0;
+tocando=null;
+}
+tocar();
+},30000);
+}
+
+tocar();
+}
+});
 },1000);
 
 render();
