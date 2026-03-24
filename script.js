@@ -1,12 +1,13 @@
 const luffy = document.getElementById("luffy");
 
-let x = 100;
-let y = 100;
+let x = 50;
+let y = 50;
 
 let frame = 0;
 let frameWidth = 48;
 let frameHeight = 48;
-let linha = 0;
+
+let linha = 1; // linha da animação
 
 let teclas = {};
 
@@ -24,13 +25,13 @@ function loop() {
 let andando = false;
 
 if (teclas["ArrowRight"]) {
-    x += 5;
+    x += 4;
     linha = 1;
     andando = true;
 }
 
 if (teclas["ArrowLeft"]) {
-    x -= 5;
+    x -= 4;
     linha = 1;
     andando = true;
 }
