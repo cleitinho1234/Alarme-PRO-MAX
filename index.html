@@ -108,6 +108,10 @@ input[type="file"] {
 <script>
 let alarmes = JSON.parse(localStorage.getItem("alarmes")) || [];
 
+let tocando = null;
+let repetindo = false;
+let timeoutID = null; // 🔥 controla o loop
+
 function salvar() {
     localStorage.setItem("alarmes", JSON.stringify(alarmes));
 }
@@ -121,7 +125,7 @@ inputHora.addEventListener("input", () => {
     inputHora.value = v;
 });
 
-// AUDIO BASE64
+// AUDIO
 const inputAudio = document.getElementById("inputAudio");
 
 inputAudio.addEventListener("change", () => {
@@ -138,7 +142,7 @@ function fecharModal() {
     document.getElementById("modal").style.display = "none";
 }
 
-// 🔥 SALVAR COM BASE64
+// SALVAR COM BASE64
 function salvarAlarme() {
     const hora = inputHora.value;
     const file = inputAudio.files[0];
@@ -205,16 +209,24 @@ function remover(i){
     salvar(); render();
 }
 
-// ALARME
-let tocando=null;
-let repetindo=false;
-
+// 🔥 PARAR FUNCIONANDO
 function pararAlarme(){
-    repetindo=false;
-    if(tocando){ tocando.pause(); tocando=null; }
-    document.getElementById("parar").style.display="none";
+    repetindo = false;
+
+    if (tocando) {
+        tocando.pause();
+        tocando = null;
+    }
+
+    if (timeoutID) {
+        clearTimeout(timeoutID);
+        timeoutID = null;
+    }
+
+    document.getElementById("parar").style.display = "none";
 }
 
+// ALARME
 setInterval(()=>{
     let d=new Date();
     let atual = d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
@@ -231,7 +243,7 @@ setInterval(()=>{
                 tocando=new Audio(a.audio || "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
                 tocando.play();
 
-                setTimeout(()=>{
+                timeoutID = setTimeout(()=>{
                     if(tocando){ tocando.pause(); tocando=null; }
                     tocar();
                 },30000);
