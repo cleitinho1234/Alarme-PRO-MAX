@@ -51,6 +51,25 @@ button {
     color: white;
     display: none;
 }
+
+/* 🔥 MODAL EDITAR */
+#modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+#modalContent {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 12px;
+}
 </style>
 
 </head>
@@ -70,6 +89,18 @@ button {
 
 <div id="lista"></div>
 
+<!-- 🔥 MODAL -->
+
+<div id="modal">
+    <div id="modalContent">
+        <h3>Editar Alarme</h3>
+        <input type="text" id="editarHora" maxlength="5" placeholder="HH:MM">
+        <br>
+        <button onclick="salvarEdicao()">Salvar</button>
+        <button onclick="fecharModal()">Cancelar</button>
+    </div>
+</div>
+
 <script>
 let alarmes = JSON.parse(localStorage.getItem("alarmes")) || [];
 
@@ -78,17 +109,23 @@ function salvar() {
 }
 
 // AUTO :
+function autoFormatar(input) {
+    input.addEventListener("input", function () {
+        let valor = input.value.replace(/\D/g, "");
+
+        if (valor.length >= 3) {
+            valor = valor.slice(0, 2) + ":" + valor.slice(2, 4);
+        }
+
+        input.value = valor;
+    });
+}
+
 const inputHora = document.getElementById("hora");
+const editarInput = document.getElementById("editarHora");
 
-inputHora.addEventListener("input", function () {
-    let valor = inputHora.value.replace(/\D/g, "");
-
-    if (valor.length >= 3) {
-        valor = valor.slice(0, 2) + ":" + valor.slice(2, 4);
-    }
-
-    inputHora.value = valor;
-});
+autoFormatar(inputHora);
+autoFormatar(editarInput);
 
 function adicionarAlarme() {
     const hora = inputHora.value;
@@ -123,15 +160,33 @@ function toggle(index) {
     render();
 }
 
-function editar(index) {
-    let novaHora = prompt("Novo horário (HH:MM):", alarmes[index].hora);
+// 🔥 EDITAR BONITO
+let editIndex = null;
 
-    if (novaHora) {
-        alarmes[index].hora = novaHora;
-        alarmes[index].ativo = true;
-        salvar();
-        render();
+function editar(index) {
+    editIndex = index;
+    document.getElementById("modal").style.display = "flex";
+    editarInput.value = alarmes[index].hora;
+}
+
+function fecharModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+function salvarEdicao() {
+    const novaHora = editarInput.value;
+
+    if (!novaHora || novaHora.length < 5) {
+        alert("Hora inválida!");
+        return;
     }
+
+    alarmes[editIndex].hora = novaHora;
+    alarmes[editIndex].ativo = true;
+
+    salvar();
+    render();
+    fecharModal();
 }
 
 function render() {
@@ -186,18 +241,13 @@ setInterval(() => {
                 tocando = new Audio(a.audio || "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
                 tocando.play();
 
-                // toca 30s
                 setTimeout(() => {
                     if (tocando) {
                         tocando.pause();
                         tocando = null;
                     }
-                }, 30000);
-
-                // repete depois
-                setTimeout(() => {
                     tocarAlarme();
-                }, 60000);
+                }, 30000);
             }
 
             tocarAlarme();
