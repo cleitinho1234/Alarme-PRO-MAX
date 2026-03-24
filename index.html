@@ -1,21 +1,67 @@
 <!DOCTYPE html>
 
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Jogo do Luffy</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+<meta charset="UTF-8">
+<title>Meu Alarme</title>
 
+<style>
+body {
+    background: #111;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+    margin-top: 100px;
+}
+
+input, button {
+    padding: 10px;
+    font-size: 18px;
+    margin: 10px;
+}
+
+#status {
+    margin-top: 20px;
+    font-size: 20px;
+}
+</style>
+
+</head>
 <body>
 
-```
-<div id="luffy"></div>
+<h1>⏰ Meu Alarme</h1>
 
-<script src="script.js"></script>
-```
+<input type="time" id="hora">
+<br>
+
+<button onclick="ativarAlarme()">Ativar Alarme</button>
+
+<div id="status"></div>
+
+<audio id="som" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+
+<script>
+let horaAlarme = "";
+
+function ativarAlarme() {
+    horaAlarme = document.getElementById("hora").value;
+    document.getElementById("status").innerText = "Alarme definido para: " + horaAlarme;
+}
+
+setInterval(() => {
+    let agora = new Date();
+    let horas = agora.getHours().toString().padStart(2, "0");
+    let minutos = agora.getMinutes().toString().padStart(2, "0");
+
+    let horaAtual = horas + ":" + minutos;
+
+    if (horaAtual === horaAlarme) {
+        document.getElementById("som").play();
+        document.getElementById("status").innerText = "⏰ TOCANDO!!!";
+    }
+
+}, 1000);
+</script>
 
 </body>
-
 </html>
