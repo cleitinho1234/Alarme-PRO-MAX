@@ -40,10 +40,6 @@ button {
   cursor: pointer;
 }
 
-button:hover {
-  background: #16a34a;
-}
-
 .dark {
   background: black !important;
   color: #22c55e;
@@ -52,37 +48,48 @@ button:hover {
 </head>
 <body>
 
-<div class="container" id="app">
+<div class="container">
   <h2>⏰ Despertador</h2>
 
-  <!-- Relógio -->
   <div id="clock"></div>
 
-  <!-- Definir alarme -->
   <input type="time" id="alarmTime"><br>
 
-  <!-- Botões -->
   <button onclick="toggleAlarm()">Ligar / Desligar</button>
   <button onclick="snooze()">Soneca</button>
+  <button onclick="stopAlarm()">Parar</button>
   <button onclick="toggleLight()">Luz</button>
 
   <p id="status"></p>
 </div>
 
-<!-- Som simples -->
 <audio id="sound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
 
 <script>
 let alarmTime = null;
 let alarmOn = false;
 let ringing = false;
+let audioUnlocked = false;
+
+const sound = document.getElementById("sound");
+
+// liberar áudio (necessário no Chrome)
+document.body.addEventListener("click", () => {
+  if (!audioUnlocked) {
+    sound.play().then(() => {
+      sound.pause();
+      sound.currentTime = 0;
+      audioUnlocked = true;
+      console.log("Áudio liberado");
+    }).catch(() => {});
+  }
+});
 
 function updateClock() {
   const now = new Date();
   const time = now.toLocaleTimeString();
   document.getElementById("clock").innerText = time;
 
-  // comparação correta (hora e minuto)
   const currentHM = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
 
   if (alarmOn && alarmTime === currentHM) {
@@ -110,14 +117,16 @@ function toggleAlarm() {
 function playAlarm() {
   if (ringing) return;
 
-  const sound = document.getElementById("sound");
   sound.loop = true;
-  sound.play();
-  ringing = true;
+
+  sound.play().then(() => {
+    ringing = true;
+  }).catch(() => {
+    document.getElementById("status").innerText = "Clique na tela para ativar o som";
+  });
 }
 
 function stopAlarm() {
-  const sound = document.getElementById("sound");
   sound.pause();
   sound.currentTime = 0;
   ringing = false;
@@ -131,10 +140,10 @@ function snooze() {
   const now = new Date();
   now.setMinutes(now.getMinutes() + 5);
 
-  alarmTime = now.toTimeString().substring(0,5);
+  alarmTime = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
   alarmOn = true;
 
-  document.getElementById("status").innerText = "Soneca ativada até " + alarmTime;
+  document.getElementById("status").innerText = "Soneca até " + alarmTime;
 }
 
 function toggleLight() {
