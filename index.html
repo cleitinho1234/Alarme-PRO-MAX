@@ -1,154 +1,103 @@
 <!DOCTYPE html>
+
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Despertador Simples</title>
+<title>Mini Zap</title>
 
 <style>
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   background: #0f172a;
   color: white;
   text-align: center;
-  padding: 20px;
 }
 
-.container {
-  max-width: 350px;
-  margin: auto;
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 15px;
-}
-
-#clock {
-  font-size: 42px;
-  margin: 20px 0;
-}
-
-button, input {
-  margin: 8px;
+#chat {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #333;
+  margin: 20px;
   padding: 10px;
-  border-radius: 8px;
-  border: none;
 }
 
-button {
-  background: #22c55e;
-  color: white;
-  cursor: pointer;
-}
-
-.dark {
-  background: black !important;
-  color: #22c55e;
+input, button {
+  padding: 10px;
+  margin: 5px;
 }
 </style>
+
 </head>
 <body>
 
-<div class="container">
-  <h2>⏰ Despertador</h2>
+<h2>Seu ID: <span id="meuId"></span></h2>
 
-  <div id="clock"></div>
+<input id="idDestino" placeholder="ID da pessoa">
+<button onclick="buscarUsuario()">Adicionar</button>
 
-  <input type="time" id="alarmTime"><br>
+<div id="chat"></div>
 
-  <button onclick="toggleAlarm()">Ligar / Desligar</button>
-  <button onclick="snooze()">Soneca</button>
-  <button onclick="stopAlarm()">Parar</button>
-  <button onclick="toggleLight()">Luz</button>
+<input id="msg" placeholder="Mensagem">
+<button onclick="enviar()">Enviar</button>
 
-  <p id="status"></p>
-</div>
-
-<audio id="sound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
-let alarmTime = null;
-let alarmOn = false;
-let ringing = false;
-let audioUnlocked = false;
+const SERVER = "https://SEU-LINK.onrender.com"; // <-- MUDA ISSO
 
-const sound = document.getElementById("sound");
+let socket = io(SERVER);
 
-// liberar áudio (necessário no Chrome)
-document.body.addEventListener("click", () => {
-  if (!audioUnlocked) {
-    sound.play().then(() => {
-      sound.pause();
-      sound.currentTime = 0;
-      audioUnlocked = true;
-      console.log("Áudio liberado");
-    }).catch(() => {});
-  }
-});
+let meuId = null;
+let destino = null;
 
-function updateClock() {
-  const now = new Date();
-  const time = now.toLocaleTimeString();
-  document.getElementById("clock").innerText = time;
+// 🔹 CRIAR USUÁRIO
+async function iniciar() {
+  const res = await fetch(SERVER + "/register", {
+    method: "POST"
+  });
 
-  const currentHM = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const data = await res.json();
 
-  if (alarmOn && alarmTime === currentHM) {
-    playAlarm();
-  }
+  meuId = data.id;
+  document.getElementById("meuId").innerText = meuId;
+
+  socket.emit("join", meuId);
 }
 
-setInterval(updateClock, 1000);
+// 🔹 BUSCAR USUÁRIO
+async function buscarUsuario() {
+  const id = document.getElementById("idDestino").value;
 
-function toggleAlarm() {
-  const input = document.getElementById("alarmTime").value;
+  const res = await fetch(SERVER + "/user/" + id);
 
-  if (!alarmOn) {
-    if (!input) return;
-    alarmTime = input;
-    alarmOn = true;
-    document.getElementById("status").innerText = "Alarme ligado para " + alarmTime;
+  if (res.ok) {
+    destino = id;
+    alert("Usuário encontrado!");
   } else {
-    alarmOn = false;
-    stopAlarm();
-    document.getElementById("status").innerText = "Alarme desligado";
+    alert("ID inválido");
   }
 }
 
-function playAlarm() {
-  if (ringing) return;
+// 🔹 ENVIAR MENSAGEM
+function enviar() {
+  const text = document.getElementById("msg").value;
 
-  sound.loop = true;
-
-  sound.play().then(() => {
-    ringing = true;
-  }).catch(() => {
-    document.getElementById("status").innerText = "Clique na tela para ativar o som";
+  socket.emit("sendMessage", {
+    from: meuId,
+    to: destino,
+    text
   });
 }
 
-function stopAlarm() {
-  sound.pause();
-  sound.currentTime = 0;
-  ringing = false;
-}
+// 🔹 RECEBER MENSAGEM
+socket.on("receiveMessage", (msg) => {
+  const div = document.createElement("div");
+  div.innerText = msg.from + ": " + msg.text;
+  document.getElementById("chat").appendChild(div);
+});
 
-function snooze() {
-  if (!ringing) return;
-
-  stopAlarm();
-
-  const now = new Date();
-  now.setMinutes(now.getMinutes() + 5);
-
-  alarmTime = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  alarmOn = true;
-
-  document.getElementById("status").innerText = "Soneca até " + alarmTime;
-}
-
-function toggleLight() {
-  document.body.classList.toggle("dark");
-}
+// iniciar automático
+iniciar();
 </script>
 
 </body>
