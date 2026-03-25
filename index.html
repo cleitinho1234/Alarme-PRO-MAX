@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alarme Moderno</title>
+<title>Despertador Simples</title>
 
 <style>
 body {
@@ -15,22 +15,23 @@ body {
 }
 
 .container {
-  max-width: 400px;
+  max-width: 350px;
   margin: auto;
   background: #1e293b;
   padding: 20px;
-  border-radius: 20px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  border-radius: 15px;
 }
 
-h1 { font-size: 28px; }
+#clock {
+  font-size: 42px;
+  margin: 20px 0;
+}
 
-input, button, select {
-  margin: 10px;
+button, input {
+  margin: 8px;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: none;
-  font-size: 16px;
 }
 
 button {
@@ -39,135 +40,102 @@ button {
   cursor: pointer;
 }
 
-button:hover { background: #16a34a; }
+button:hover {
+  background: #16a34a;
+}
 
-#clock {
-  font-size: 40px;
-  margin: 20px 0;
+.dark {
+  background: black !important;
+  color: #22c55e;
 }
 </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>⏰ Alarme PRO</h1>
+<div class="container" id="app">
+  <h2>⏰ Despertador</h2>
+
+  <!-- Relógio -->
   <div id="clock"></div>
 
+  <!-- Definir alarme -->
   <input type="time" id="alarmTime"><br>
 
-  <label>Escolher som:</label><br>
-  <input type="file" id="customSound" accept="audio/*"><br>
-
-  <label>Volume:</label>
-  <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5"><br>
-
-  <label>Soneca (min):</label>
-  <select id="snooze">
-    <option value="5">5</option>
-    <option value="9" selected>9</option>
-    <option value="15">15</option>
-  </select><br>
-
-  <button onclick="setAlarm()">Ativar Alarme</button>
-  <button onclick="stopAlarm()">Parar</button>
-  <button onclick="snoozeAlarm()">Soneca</button>
+  <!-- Botões -->
+  <button onclick="toggleAlarm()">Ligar / Desligar</button>
+  <button onclick="snooze()">Soneca</button>
+  <button onclick="toggleLight()">Luz</button>
 
   <p id="status"></p>
 </div>
 
-<!-- Som padrão -->
-<audio id="alarmSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+<!-- Som simples -->
+<audio id="sound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
 
 <script>
-let alarmTimeout = null;
-let isRinging = false;
-let customAudioURL = null;
+let alarmTime = null;
+let alarmOn = false;
+let ringing = false;
 
 function updateClock() {
   const now = new Date();
-  document.getElementById("clock").innerText = now.toLocaleTimeString();
+  const time = now.toLocaleTimeString();
+  document.getElementById("clock").innerText = time;
+
+  if (alarmOn && alarmTime === time.substring(0,5)) {
+    playAlarm();
+  }
 }
+
 setInterval(updateClock, 1000);
 
-// pegar áudio personalizado
-const fileInput = document.getElementById("customSound");
-fileInput.addEventListener("change", function() {
-  const file = this.files[0];
-  if (file) {
-    customAudioURL = URL.createObjectURL(file);
-    document.getElementById("status").innerText = "Áudio personalizado carregado";
-  }
-});
-
-function setAlarm() {
+function toggleAlarm() {
   const input = document.getElementById("alarmTime").value;
-  if (!input) return;
 
-  const now = new Date();
-  const [hours, minutes] = input.split(":");
-
-  const alarm = new Date();
-  alarm.setHours(hours);
-  alarm.setMinutes(minutes);
-  alarm.setSeconds(0);
-
-  if (alarm < now) {
-    alarm.setDate(alarm.getDate() + 1);
+  if (!alarmOn) {
+    if (!input) return;
+    alarmTime = input;
+    alarmOn = true;
+    document.getElementById("status").innerText = "Alarme ligado para " + alarmTime;
+  } else {
+    alarmOn = false;
+    stopAlarm();
+    document.getElementById("status").innerText = "Alarme desligado";
   }
-
-  const timeToAlarm = alarm - now;
-
-  alarmTimeout = setTimeout(triggerAlarm, timeToAlarm);
-
-  document.getElementById("status").innerText = "Alarme definido para " + alarm.toLocaleTimeString();
 }
 
-function triggerAlarm() {
-  const sound = document.getElementById("alarmSound");
+function playAlarm() {
+  if (ringing) return;
 
-  // usa som personalizado ou padrão
-  if (customAudioURL) {
-    sound.src = customAudioURL;
-  } else {
-    sound.src = "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3";
-  }
-
-  sound.volume = 0.1;
+  const sound = document.getElementById("sound");
   sound.loop = true;
   sound.play();
-
-  isRinging = true;
-
-  // volume progressivo
-  let vol = 0.1;
-  const interval = setInterval(() => {
-    if (vol < document.getElementById("volume").value && isRinging) {
-      vol += 0.1;
-      sound.volume = vol;
-    } else {
-      clearInterval(interval);
-    }
-  }, 1000);
+  ringing = true;
 }
 
 function stopAlarm() {
-  const sound = document.getElementById("alarmSound");
+  const sound = document.getElementById("sound");
   sound.pause();
   sound.currentTime = 0;
-  isRinging = false;
-  document.getElementById("status").innerText = "Alarme parado";
+  ringing = false;
 }
 
-function snoozeAlarm() {
-  if (!isRinging) return;
+function snooze() {
+  if (!ringing) return;
 
   stopAlarm();
 
-  const minutes = document.getElementById("snooze").value;
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 5);
 
-  alarmTimeout = setTimeout(triggerAlarm, minutes * 60000);
+  alarmTime = now.toTimeString().substring(0,5);
+  alarmOn = true;
 
-  document.getElementById("status").innerText = "Soneca ativada por " + minutes + " min";
+  document.getElementById("status").innerText = "Soneca ativada até " + alarmTime;
+}
+
+function toggleLight() {
+  document.body.classList.toggle("dark");
 }
 </script>
 
