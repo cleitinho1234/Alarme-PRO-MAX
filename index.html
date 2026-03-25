@@ -45,7 +45,10 @@ input, button {
 <script>
 const SERVER = "https://mini-zap-2.onrender.com";
 
-let socket = io(SERVER);
+// 🔥 força websocket (evita bug no Render)
+let socket = io(SERVER, {
+  transports: ["websocket"]
+});
 
 let meuId = null;
 let destino = null;
