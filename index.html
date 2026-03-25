@@ -82,7 +82,10 @@ function updateClock() {
   const time = now.toLocaleTimeString();
   document.getElementById("clock").innerText = time;
 
-  if (alarmOn && alarmTime === time.substring(0,5)) {
+  // comparação correta (hora e minuto)
+  const currentHM = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+  if (alarmOn && alarmTime === currentHM) {
     playAlarm();
   }
 }
