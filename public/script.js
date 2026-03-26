@@ -1,90 +1,151 @@
-// ID único do usuário
+// ID fixo do usuário
 let userId = localStorage.getItem("userId");
 if (!userId) {
     userId = Math.floor(Math.random() * 1000000).toString();
     localStorage.setItem("userId", userId);
 }
 
-// Mostrar ID na tela
+// Mostrar ID
 document.getElementById("userIdDisplay").innerText = userId;
 
-// Botão para copiar ID
-document.getElementById("copyIdBtn").addEventListener("click", () => {
-    navigator.clipboard.writeText(userId)
-        .then(() => alert("ID copiado!"))
-        .catch(() => alert("Erro ao copiar ID"));
-});
+// Dados locais
+let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+let chats = JSON.parse(localStorage.getItem("chats")) || {};
 
-const profileForm = document.getElementById("profileForm");
-const profilePreview = document.getElementById("profilePreview");
+// Elementos
 const contactsDiv = document.getElementById("contacts");
-const friendSelect = document.getElementById("friendSelect");
 const messagesDiv = document.getElementById("messages");
 
-// Salvar perfil
-profileForm.addEventListener("submit", (e) => {
+let currentChat = null;
+
+// =====================
+// SALVAR PERFIL
+// =====================
+document.getElementById("profileForm").addEventListener("submit", (e) => {
     e.preventDefault();
+
     const username = document.getElementById("username").value;
     const file = document.getElementById("profilePic").files[0];
+
     const reader = new FileReader();
-    reader.onload = async () => {
-        await fetch("/saveProfile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: userId, username, photo: reader.result })
-        });
-        profilePreview.src = reader.result;
+    reader.onload = () => {
+        localStorage.setItem("profile", JSON.stringify({
+            username,
+            photo: reader.result
+        }));
+
+        document.getElementById("profilePreview").src = reader.result;
+        alert("Perfil salvo!");
     };
+
     reader.readAsDataURL(file);
 });
 
-// Adicionar amigo
+// =====================
+// ADICIONAR CONTATO
+// =====================
 async function addFriend() {
     const friendId = document.getElementById("addUserId").value;
+
     const res = await fetch(`/getUser/${friendId}`);
+
     if (res.ok) {
         const user = await res.json();
-        const div = document.createElement("div");
-        div.innerHTML = `<img src="${user.photo}"> ${user.username} (ID: ${friendId})`;
-        contactsDiv.appendChild(div);
 
-        const option = document.createElement("option");
-        option.value = friendId;
-        option.text = user.username;
-        friendSelect.appendChild(option);
+        const contact = {
+            id: friendId,
+            name: user.username,
+            photo: user.photo
+        };
 
-        alert(`Você adicionou ${user.username}`);
+        contacts.push(contact);
+        localStorage.setItem("contacts", JSON.stringify(contacts));
+
+        renderContacts();
     } else {
         alert("ID não encontrado");
     }
 }
 
-// Enviar mensagem
+// =====================
+// MOSTRAR CONTATOS
+// =====================
+function renderContacts() {
+    contactsDiv.innerHTML = "";
+
+    contacts.forEach(c => {
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+            <img src="${c.photo}" width="40" style="border-radius:50%">
+            ${c.name}
+        `;
+
+        div.style.cursor = "pointer";
+
+        div.onclick = () => openChat(c.id);
+
+        contactsDiv.appendChild(div);
+    });
+}
+
+// =====================
+// ABRIR CHAT
+// =====================
+function openChat(friendId) {
+    currentChat = friendId;
+    loadMessages();
+}
+
+// =====================
+// ENVIAR MENSAGEM
+// =====================
 async function sendMessage() {
-    const toId = friendSelect.value;
     const text = document.getElementById("messageText").value;
-    if (!toId || !text) return alert("Escolha um amigo e digite uma mensagem");
+
+    if (!currentChat || !text) return;
+
+    if (!chats[currentChat]) chats[currentChat] = [];
+
+    chats[currentChat].push({
+        from: userId,
+        text
+    });
+
+    localStorage.setItem("chats", JSON.stringify(chats));
 
     await fetch("/sendMessage", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromId: userId, toId, text })
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            fromId: userId,
+            toId: currentChat,
+            text
+        })
     });
 
     document.getElementById("messageText").value = "";
     loadMessages();
 }
 
-// Carregar mensagens
-async function loadMessages() {
-    const res = await fetch(`/getMessages/${userId}`);
-    const data = await res.json();
+// =====================
+// CARREGAR MENSAGENS
+// =====================
+function loadMessages() {
     messagesDiv.innerHTML = "";
-    data.forEach(m => {
-        const from = m.fromId === userId ? "Você" : m.fromId;
-        messagesDiv.innerHTML += `<div><strong>${from}:</strong> ${m.text}</div>`;
+
+    const chat = chats[currentChat] || [];
+
+    chat.forEach(m => {
+        const div = document.createElement("div");
+
+        div.innerText = (m.from === userId ? "Você: " : "Ele: ") + m.text;
+
+        messagesDiv.appendChild(div);
     });
 }
 
-// Atualiza mensagens a cada 2 segundos
-setInterval(loadMessages, 2000);
+// =====================
+// INICIAR
+// =====================
+renderContacts();
