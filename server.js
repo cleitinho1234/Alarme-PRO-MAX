@@ -1,46 +1,79 @@
 const express = require("express");
-const fs = require("fs");
+const mongoose = require("mongoose");
 const path = require("path");
+
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-let users = {};
-let messages = [];
+// 🔥 CONEXÃO COM MONGODB
+mongoose.connect("mongodb+srv://admin:123456mini@cluster0.j6xbddq.mongodb.net/miniZap?retryWrites=true&w=majority")
+.then(() => console.log("Mongo conectado"))
+.catch(err => console.log(err));
 
-// Carregar dados existentes
-if (fs.existsSync("users.json")) users = JSON.parse(fs.readFileSync("users.json"));
-if (fs.existsSync("messages.json")) messages = JSON.parse(fs.readFileSync("messages.json"));
+// MODELOS
+const User = mongoose.model("User", {
+    id: String,
+    username: String,
+    photo: String
+});
 
-// Salvar perfil
-app.post("/saveProfile", (req, res) => {
+const Message = mongoose.model("Message", {
+    fromId: String,
+    toId: String,
+    text: String,
+    timestamp: Number
+});
+
+// SALVAR PERFIL
+app.post("/saveProfile", async (req, res) => {
     const { id, username, photo } = req.body;
-    users[id] = { username, photo };
-    fs.writeFileSync("users.json", JSON.stringify(users));
+
+    await User.findOneAndUpdate(
+        { id },
+        { username, photo },
+        { upsert: true }
+    );
+
     res.send({ success: true });
 });
 
-// Pegar perfil de um usuário
-app.get("/getUser/:id", (req, res) => {
-    const user = users[req.params.id];
+// PEGAR USUÁRIO
+app.get("/getUser/:id", async (req, res) => {
+    const user = await User.findOne({ id: req.params.id });
+
     if (user) res.send(user);
     else res.status(404).send({ error: "Usuário não encontrado" });
 });
 
-// Enviar mensagem
-app.post("/sendMessage", (req, res) => {
+// ENVIAR MENSAGEM
+app.post("/sendMessage", async (req, res) => {
     const { fromId, toId, text } = req.body;
-    messages.push({ fromId, toId, text, timestamp: Date.now() });
-    fs.writeFileSync("messages.json", JSON.stringify(messages));
+
+    await Message.create({
+        fromId,
+        toId,
+        text,
+        timestamp: Date.now()
+    });
+
     res.send({ success: true });
 });
 
-// Receber mensagens de um usuário
-app.get("/getMessages/:id", (req, res) => {
+// RECEBER MENSAGENS
+app.get("/getMessages/:id", async (req, res) => {
     const id = req.params.id;
-    const userMessages = messages.filter(m => m.fromId === id || m.toId === id);
-    res.send(userMessages);
+
+    const msgs = await Message.find({
+        $or: [
+            { fromId: id },
+            { toId: id }
+        ]
+    });
+
+    res.send(msgs);
 });
 
-app.listen(3000, () => console.log("Servidor rodando em http://localhost:3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Servidor rodando"));
