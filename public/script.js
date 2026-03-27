@@ -1,179 +1,95 @@
-let currentUser = null;
-const contacts = [];
+const express = require("express");
+const mongoose = require("mongoose");
+const path = require("path");
+
+const app = express();
+app.use(express.json({ limit: "10mb" })); // IMPORTANTE pra foto
+app.use(express.static(path.join(__dirname, "public")));
+
+mongoose.connect("SUA_URL_MONGO")
+  .then(() => console.log("Mongo conectado"))
+  .catch(err => console.log(err));
 
 // =========================
-// Carregar ou criar usuário (FIXO)
-window.addEventListener("load", async () => {
-  let savedId = localStorage.getItem("userId");
+const User = mongoose.model("User", {
+  id: String,
+  username: String,
+  photo: String
+});
 
-  if (savedId) {
-    const res = await fetch(`/getUser/${savedId}`);
-    const user = await res.json();
-
-    if (!user.error) {
-      currentUser = user;
-    } else {
-      localStorage.removeItem("userId");
-    }
-  }
-
-  // Se não existir → cria novo
-  if (!currentUser) {
-    const res = await fetch("/user", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ username: "Novo Usuário", photo: "" })
-    });
-
-    currentUser = await res.json();
-    localStorage.setItem("userId", currentUser.id);
-  }
-
-  // Mostrar ID
-  document.getElementById("userIdDisplay").textContent = currentUser.id;
-
-  // Manter nome
-  document.getElementById("username").value = currentUser.username || "";
-
-  // 🔥 Manter foto ao recarregar
-  document.getElementById("profilePreview").src = currentUser.photo || "";
-
-  loadMessages();
+const Message = mongoose.model("Message", {
+  fromId: String,
+  toId: String,
+  text: String,
+  timestamp: Number
 });
 
 // =========================
-// Salvar perfil (nome e foto)
-document.getElementById("profileForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+// Criar usuário
+app.post("/user", async (req, res) => {
+  let id;
 
-  const username = document.getElementById("username").value;
-  const file = document.getElementById("profilePic").files[0];
-
-  let photo = currentUser.photo;
-
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onload = async () => {
-      photo = reader.result;
-      await saveProfile(username, photo);
-    };
-
-    reader.readAsDataURL(file);
-  } else {
-    await saveProfile(username, photo);
+  while (true) {
+    id = Math.floor(1000 + Math.random() * 9000).toString();
+    const existe = await User.findOne({ id });
+    if (!existe) break;
   }
-});
 
-// =========================
-// 🔥 CORRIGIDO AQUI
-async function saveProfile(username, photo) {
-  const res = await fetch("/saveProfile", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      id: currentUser.id,
-      username,
-      photo
-    })
+  const user = new User({
+    id,
+    username: "Novo Usuário",
+    photo: ""
   });
 
-  // 🔥 pega o usuário atualizado do banco
-  const updatedUser = await res.json();
-
-  currentUser = updatedUser;
-
-  // 🔥 atualiza tela corretamente
-  document.getElementById("username").value = currentUser.username || "";
-  document.getElementById("profilePreview").src = currentUser.photo || "";
-}
-
-// =========================
-// Copiar ID
-document.getElementById("copyIdBtn").addEventListener("click", () => {
-  navigator.clipboard.writeText(currentUser.id);
-  alert("ID copiado!");
+  await user.save();
+  res.json(user);
 });
 
 // =========================
-// Adicionar contato
-document.getElementById("addFriendBtn").addEventListener("click", async () => {
-  const friendId = document.getElementById("addUserId").value.trim();
+// SALVAR PERFIL
+app.post("/saveProfile", async (req, res) => {
+  const { id, username, photo } = req.body;
 
-  if (!friendId) return alert("Digite o ID do amigo");
-  if (friendId === currentUser.id) return alert("Você não pode adicionar seu próprio ID");
+  const user = await User.findOneAndUpdate(
+    { id },
+    { username, photo },
+    { new: true, upsert: true }
+  );
 
-  const res = await fetch(`/getUser/${friendId}`);
-  const user = await res.json();
-
-  if (user.error) return alert("Usuário não encontrado");
-
-  if (!contacts.some(c => c.id === user.id)) {
-    contacts.push(user);
-
-    const select = document.getElementById("friendSelect");
-    const option = document.createElement("option");
-
-    option.value = user.id;
-    option.textContent = user.username;
-
-    select.appendChild(option);
-
-    const div = document.createElement("div");
-    div.textContent = user.username + " (ID: " + user.id + ")";
-
-    document.getElementById("contacts").appendChild(div);
-  }
-
-  document.getElementById("addUserId").value = "";
+  res.json(user);
 });
 
 // =========================
-// Enviar mensagem
-document.getElementById("sendMessageBtn").addEventListener("click", async () => {
-  const toId = document.getElementById("friendSelect").value;
-  const text = document.getElementById("messageText").value.trim();
+// Buscar usuário
+app.get("/getUser/:id", async (req, res) => {
+  const user = await User.findOne({ id: req.params.id });
 
-  if (!toId || !text) {
-    return alert("Selecione um amigo e digite a mensagem");
-  }
+  if (user) res.json(user);
+  else res.status(404).json({ error: "Usuário não encontrado" });
+});
 
-  await fetch("/sendMessage", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      fromId: currentUser.id,
-      toId,
-      text
-    })
+// =========================
+// Mensagens
+app.post("/sendMessage", async (req, res) => {
+  const { fromId, toId, text } = req.body;
+
+  const msg = await Message.create({
+    fromId,
+    toId,
+    text,
+    timestamp: Date.now()
   });
 
-  document.getElementById("messageText").value = "";
-  loadMessages();
+  res.json(msg);
+});
+
+app.get("/getMessages/:id", async (req, res) => {
+  const msgs = await Message.find({
+    $or: [{ fromId: req.params.id }, { toId: req.params.id }]
+  }).sort({ timestamp: 1 });
+
+  res.json(msgs);
 });
 
 // =========================
-// Carregar mensagens
-async function loadMessages() {
-  if (!currentUser) return;
-
-  const res = await fetch(`/getMessages/${currentUser.id}`);
-  const msgs = await res.json();
-
-  const messagesDiv = document.getElementById("messages");
-  messagesDiv.innerHTML = "";
-
-  msgs.forEach(m => {
-    const div = document.createElement("div");
-
-    const from = m.fromId === currentUser.id ? "Você" : m.fromId;
-
-    div.textContent = `${from}: ${m.text}`;
-    messagesDiv.appendChild(div);
-  });
-
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// Atualiza mensagens a cada 3s
-setInterval(loadMessages, 3000);
+app.listen(3000, () => console.log("Servidor rodando"));
