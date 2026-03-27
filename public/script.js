@@ -2,15 +2,49 @@ let currentUser = null;
 const contacts = [];
 
 // =========================
-// Cria usuário automaticamente ao carregar a página
+// Carregar ou criar usuário (FIXO)
 window.addEventListener("load", async () => {
-  const res = await fetch("/user", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ username: "Novo Usuário", photo: "" })
-  });
-  currentUser = await res.json();
+  let savedId = localStorage.getItem("userId");
+
+  if (savedId) {
+    // tenta pegar usuário existente
+    const res = await fetch(`/getUser/${savedId}`);
+    const user = await res.json();
+
+    if (!user.error) {
+      currentUser = user;
+    } else {
+      localStorage.removeItem("userId");
+    }
+  }
+
+  // se não existir → cria novo
+  if (!currentUser) {
+    const res = await fetch("/user", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ username: "Novo Usuário", photo: "" })
+    });
+
+    currentUser = await res.json();
+
+    // salva ID no navegador
+    localStorage.setItem("userId", currentUser.id);
+  }
+
+  // mostra ID
   document.getElementById("userIdDisplay").textContent = currentUser.id;
+
+  // mantém nome
+  if(currentUser.username){
+    document.getElementById("username").value = currentUser.username;
+  }
+
+  // mantém foto
+  if(currentUser.photo){
+    document.getElementById("profilePreview").src = currentUser.photo;
+  }
+
   loadMessages();
 });
 
@@ -40,8 +74,10 @@ async function saveProfile(username, photo){
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ id: currentUser.id, username, photo })
   });
+
   currentUser.username = username;
   currentUser.photo = photo;
+
   document.getElementById("profilePreview").src = photo;
 }
 
@@ -103,17 +139,20 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 // Carregar mensagens
 async function loadMessages(){
   if(!currentUser) return;
+
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
 
   const messagesDiv = document.getElementById("messages");
   messagesDiv.innerHTML = "";
+
   msgs.forEach(m=>{
     const div = document.createElement("div");
     const from = m.fromId === currentUser.id ? "Você" : m.fromId;
     div.textContent = `${from}: ${m.text}`;
     messagesDiv.appendChild(div);
   });
+
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
