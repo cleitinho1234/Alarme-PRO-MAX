@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 
-<!-- 🔥 RESPONSIVO -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Mini-Zap</title>
@@ -15,11 +14,27 @@ body {
   margin: 0;
 }
 
-/* CONTAINER */
 .container {
   max-width: 500px;
   margin: auto;
   padding: 10px;
+}
+
+/* HEADER CHAT */
+#chatHeader {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: #075e54;
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+#chatHeader img {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
 }
 
 /* PERFIL */
@@ -35,7 +50,6 @@ body {
   background: #fff;
   margin-bottom: 5px;
   border-radius: 8px;
-  cursor: pointer;
 }
 
 /* CHAT */
@@ -45,6 +59,7 @@ body {
   background: #efeae2;
   padding: 10px;
   border-radius: 10px;
+  display: none;
 }
 
 /* MENSAGEM */
@@ -111,25 +126,26 @@ input, select, button {
 
 <hr>
 
-<h2>Contatos</h2>
+<h2 id="contactsTitle">Contatos</h2>
 
 <input type="text" id="addUserId" placeholder="ID do amigo">
 <button id="addFriendBtn">Adicionar</button>
 
 <div id="contacts"></div>
 
+<!-- 🔥 HEADER DO CHAT -->
+<div id="chatHeader">
+  <button onclick="voltar()">⬅</button>
+  <img id="chatUserPhoto">
+  <span id="chatUserName"></span>
+</div>
+
 <hr>
-
-<h2>Chat</h2>
-
-<!-- 🔥 NOVO: MOSTRA COM QUEM VOCÊ ESTÁ CONVERSANDO -->
-<h3 id="chatTitle">Selecione um contato</h3>
 
 <div id="messages"></div>
 
-<input type="text" id="messageText" placeholder="Digite sua mensagem">
-<select id="friendSelect"></select>
-<button id="sendMessageBtn">Enviar</button>
+<input type="text" id="messageText" placeholder="Digite sua mensagem" style="display:none;">
+<button id="sendMessageBtn" style="display:none;">Enviar</button>
 
 </div>
 
