@@ -19,7 +19,7 @@ body {
   display: none;
 }
 
-.active {
+.screen.active {
   display: block;
 }
 
@@ -40,8 +40,12 @@ body {
   width: 100%;
   height: 100%;
   background: #efeae2;
-  display: flex;
   flex-direction: column;
+}
+
+/* só aparece quando ativo */
+#chatScreen.active {
+  display: flex;
 }
 
 /* TOPO CHAT */
