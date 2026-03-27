@@ -3,8 +3,19 @@ let currentUser = null;
 // contatos salvos
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 
-// 🔥 controle mensagens
+// controle mensagens
 let lastMessageCount = 0;
+
+// 🔥 DESBLOQUEAR ÁUDIO (ESSENCIAL)
+document.addEventListener("click", () => {
+  const audio = document.getElementById("notificationSound");
+  if (audio) {
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    }).catch(() => {});
+  }
+}, { once: true });
 
 // 🔔 pedir permissão de notificação
 if ("Notification" in window) {
@@ -177,7 +188,8 @@ async function loadMessages(){
     const recebeuDeOutro = novas.some(m => m.fromId !== currentUser.id);
 
     if (recebeuDeOutro && audio) {
-      audio.play();
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
 
       if (Notification.permission === "granted") {
         new Notification("Nova mensagem", {
