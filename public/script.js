@@ -1,8 +1,10 @@
 let currentUser = null;
-let currentChatId = null;
-let lastMessages = "";
 
+// contatos salvos
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+
+// usuário selecionado (chat atual)
+let activeChatUserId = null;
 
 // =========================
 // CARREGAR USUÁRIO
@@ -13,8 +15,11 @@ window.addEventListener("load", async () => {
     const res = await fetch(`/getUser/${savedId}`);
     const user = await res.json();
 
-    if (!user.error) currentUser = user;
-    else localStorage.removeItem("userId");
+    if (!user.error) {
+      currentUser = user;
+    } else {
+      localStorage.removeItem("userId");
+    }
   }
 
   if (!currentUser) {
@@ -39,10 +44,18 @@ window.addEventListener("load", async () => {
   }
 
   renderContacts();
+
+  // 🔥 define primeiro contato automaticamente
+  if (contacts.length > 0) {
+    activeChatUserId = contacts[0].id;
+    document.getElementById("friendSelect").value = activeChatUserId;
+  }
+
+  loadMessages();
 });
 
 // =========================
-// CONTATOS
+// MOSTRAR CONTATOS
 function renderContacts() {
   const contactsDiv = document.getElementById("contacts");
   const select = document.getElementById("friendSelect");
@@ -52,26 +65,32 @@ function renderContacts() {
 
   contacts.forEach(user => {
 
-    // lista
+    // select (dropdown)
+    const option = document.createElement("option");
+    option.value = user.id;
+    option.textContent = user.username;
+    select.appendChild(option);
+
+    // lista visual
     const div = document.createElement("div");
     div.textContent = user.username + " (ID: " + user.id + ")";
 
+    // 🔥 clicar troca o chat
     div.addEventListener("click", () => {
-      currentChatId = user.id;
-      document.getElementById("chatWith").textContent = user.username;
+      activeChatUserId = user.id;
       select.value = user.id;
       loadMessages();
     });
 
     contactsDiv.appendChild(div);
-
-    // select
-    const option = document.createElement("option");
-    option.value = user.id;
-    option.textContent = user.username;
-    select.appendChild(option);
   });
 }
+
+// 🔥 quando muda no select também troca chat
+document.getElementById("friendSelect").addEventListener("change", (e) => {
+  activeChatUserId = e.target.value;
+  loadMessages();
+});
 
 // =========================
 // SALVAR PERFIL
@@ -108,11 +127,19 @@ async function saveProfile(username, photo){
 }
 
 // =========================
+// COPIAR ID
+document.getElementById("copyIdBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(currentUser.id);
+  alert("ID copiado!");
+});
+
+// =========================
 // ADICIONAR CONTATO
 document.getElementById("addFriendBtn").addEventListener("click", async () => {
   const friendId = document.getElementById("addUserId").value.trim();
 
-  if(!friendId) return alert("Digite o ID");
+  if(!friendId) return alert("Digite o ID do amigo");
+  if(friendId === currentUser.id) return alert("Você não pode adicionar seu próprio ID");
 
   const res = await fetch(`/getUser/${friendId}`);
   const user = await res.json();
@@ -123,6 +150,11 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
     contacts.push(user);
     localStorage.setItem("contacts", JSON.stringify(contacts));
     renderContacts();
+
+    // 🔥 já abre o chat com ele
+    activeChatUserId = user.id;
+    document.getElementById("friendSelect").value = user.id;
+    loadMessages();
   }
 
   document.getElementById("addUserId").value = "";
@@ -131,19 +163,15 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
 // =========================
 // ENVIAR MENSAGEM
 document.getElementById("sendMessageBtn").addEventListener("click", async () => {
+  const toId = activeChatUserId;
   const text = document.getElementById("messageText").value.trim();
 
-  if(!currentChatId) return alert("Selecione um contato");
-  if(!text) return;
+  if(!toId || !text) return alert("Selecione um contato e digite a mensagem");
 
   await fetch("/sendMessage", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      fromId: currentUser.id,
-      toId: currentChatId,
-      text
-    })
+    body: JSON.stringify({ fromId: currentUser.id, toId, text })
   });
 
   document.getElementById("messageText").value = "";
@@ -151,24 +179,21 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 });
 
 // =========================
-// CHAT
+// CHAT (SEM PISCAR + FILTRO POR USUÁRIO)
 async function loadMessages(){
-  if(!currentUser || !currentChatId) return;
+  if(!currentUser || !activeChatUserId) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
 
+  const messagesDiv = document.getElementById("messages");
+
+  // 🔥 FILTRA só conversa com usuário selecionado
   const filtered = msgs.filter(m =>
-    (m.fromId === currentUser.id && m.toId === currentChatId) ||
-    (m.fromId === currentChatId && m.toId === currentUser.id)
+    (m.fromId === currentUser.id && m.toId === activeChatUserId) ||
+    (m.fromId === activeChatUserId && m.toId === currentUser.id)
   );
 
-  const hash = JSON.stringify(filtered);
-  if(hash === lastMessages) return;
-
-  lastMessages = hash;
-
-  const messagesDiv = document.getElementById("messages");
   messagesDiv.innerHTML = "";
 
   for (let m of filtered){
@@ -183,11 +208,16 @@ async function loadMessages(){
 
     const img = document.createElement("img");
     img.className = "avatar";
-    img.src = user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+    img.src = user.photo && user.photo !== ""
+      ? user.photo
+      : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.textContent = m.text;
+
+    const nome = isMe ? "Você" : (user.username || m.fromId);
+    bubble.textContent = `${nome}: ${m.text}`;
 
     if (isMe) {
       msgDiv.appendChild(bubble);
@@ -204,4 +234,9 @@ async function loadMessages(){
 }
 
 // =========================
-setInterval(loadMessages, 3000);
+// ATUALIZA SEM PISCAR
+setInterval(() => {
+  if(activeChatUserId){
+    loadMessages();
+  }
+}, 3000);
