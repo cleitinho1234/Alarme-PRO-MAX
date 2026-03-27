@@ -32,18 +32,17 @@ window.addEventListener("load", async () => {
 
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-  // 🔥 RECUPERAR NOME DO LOCALSTORAGE (GARANTE QUE NÃO SOME)
+  // 🔥 GARANTE NOME LOCAL
   const savedName = localStorage.getItem("username");
   if(savedName){
     currentUser.username = savedName;
   }
 
-  // 🔥 MOSTRAR NOME
   if(currentUser.username){
     document.getElementById("username").value = currentUser.username;
   }
 
-  renderContacts();
+  await renderContacts();
 });
 
 // =========================
@@ -70,7 +69,6 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
 async function salvarPerfil(username, photo){
 
-  // 🔥 SALVA NO BACKEND
   await fetch("/saveProfile", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
@@ -81,7 +79,7 @@ async function salvarPerfil(username, photo){
     })
   });
 
-  // 🔥 SALVA LOCAL (GARANTIA)
+  // 🔥 SALVA LOCAL
   localStorage.setItem("username", username);
 
   currentUser.username = username;
@@ -89,20 +87,34 @@ async function salvarPerfil(username, photo){
 }
 
 // =========================
-// CONTATOS
-function renderContacts(){
+// CONTATOS (ATUALIZA AUTOMÁTICO)
+async function renderContacts(){
+
   const div = document.getElementById("contacts");
   div.innerHTML = "";
 
-  contacts.forEach(user => {
+  for (let i = 0; i < contacts.length; i++) {
+
+    const contactId = contacts[i].id;
+
+    // 🔥 BUSCA NOME ATUALIZADO
+    const res = await fetch(`/getUser/${contactId}`);
+    const updatedUser = await res.json();
+
+    if(!updatedUser.error){
+      contacts[i] = updatedUser;
+    }
+
     const el = document.createElement("div");
     el.className = "contact";
-    el.textContent = user.username + " (ID: " + user.id + ")";
+    el.textContent = contacts[i].username + " (ID: " + contacts[i].id + ")";
 
-    el.onclick = () => abrirChat(user);
+    el.onclick = () => abrirChat(contacts[i]);
 
     div.appendChild(el);
-  });
+  }
+
+  localStorage.setItem("contacts", JSON.stringify(contacts));
 }
 
 // =========================
@@ -135,7 +147,7 @@ function voltar(){
 }
 
 // =========================
-// ADD CONTATO
+// ADICIONAR CONTATO
 document.getElementById("addFriendBtn").onclick = async () => {
 
   const id = document.getElementById("addUserId").value;
@@ -153,7 +165,7 @@ document.getElementById("addFriendBtn").onclick = async () => {
 };
 
 // =========================
-// ENVIAR
+// ENVIAR MENSAGEM
 document.getElementById("sendMessageBtn").onclick = async () => {
 
   const text = document.getElementById("messageText").value;
@@ -179,7 +191,7 @@ document.getElementById("sendMessageBtn").onclick = async () => {
 };
 
 // =========================
-// ADD MSG
+// ADICIONAR MENSAGEM
 function addMessage(m){
 
   const div = document.createElement("div");
@@ -198,7 +210,7 @@ function addMessage(m){
 }
 
 // =========================
-// LOAD MSG
+// CARREGAR MENSAGENS
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
@@ -210,6 +222,20 @@ async function loadMessages(initial = false){
     (m.fromId == currentUser.id && m.toId == currentChat.id) ||
     (m.fromId == currentChat.id && m.toId == currentUser.id)
   );
+
+  // 🔥 ATUALIZA NOME DO CONTATO NO CHAT
+  const resUser = await fetch(`/getUser/${currentChat.id}`);
+  const updatedUser = await resUser.json();
+
+  if(!updatedUser.error){
+    currentChat = updatedUser;
+    document.getElementById("chatName").textContent = updatedUser.username;
+
+    const avatar = document.getElementById("chatAvatar");
+    avatar.src = updatedUser.photo && updatedUser.photo !== ""
+      ? updatedUser.photo
+      : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  }
 
   if(initial){
     document.getElementById("messages").innerHTML = "";
@@ -230,6 +256,7 @@ async function loadMessages(initial = false){
 }
 
 // =========================
+// ATUALIZA AUTOMÁTICO
 setInterval(() => {
   loadMessages(false);
 }, 2000);
