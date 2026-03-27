@@ -15,7 +15,7 @@ mongoose.connect("mongodb+srv://admin:123456mini@cluster0.j6xbddq.mongodb.net/mi
 // ==========================
 // Modelos
 const User = mongoose.model("User", {
-    id: String,
+    id: String,        // ID único do usuário
     username: String,
     photo: String
 });
@@ -28,19 +28,45 @@ const Message = mongoose.model("Message", {
 });
 
 // ==========================
-// Criar novo usuário com ID único
+// Pré-popular usuários fixos (10 IDs)
+const usuariosFixos = [
+    { id: "1001", username: "Cleitinho", photo: "" },
+    { id: "1002", username: "Tommy", photo: "" },
+    { id: "1003", username: "Luffy", photo: "" },
+    { id: "1004", username: "Zoro", photo: "" },
+    { id: "1005", username: "Nami", photo: "" },
+    { id: "1006", username: "Sanji", photo: "" },
+    { id: "1007", username: "Usopp", photo: "" },
+    { id: "1008", username: "Chopper", photo: "" },
+    { id: "1009", username: "Robin", photo: "" },
+    { id: "1010", username: "Franky", photo: "" },
+];
+
+async function criarUsuariosFixos() {
+    for (let u of usuariosFixos) {
+        const existe = await User.findOne({ id: u.id });
+        if (!existe) {
+            await new User(u).save();
+        }
+    }
+}
+criarUsuariosFixos();
+
+// ==========================
+// Criar novo usuário com ID único automático
 app.post("/user", async (req, res) => {
     const { username, photo } = req.body;
 
+    // Gera ID único de 4 dígitos
     let id;
     while (true) {
-        id = Math.floor(1000 + Math.random() * 9000).toString(); // ID 4 dígitos
+        id = Math.floor(1000 + Math.random() * 9000).toString();
         const existe = await User.findOne({ id });
         if (!existe) break;
     }
 
     const user = new User({ id, username, photo });
-    await user.save(); // salva no MongoDB
+    await user.save();
     res.json(user);
 });
 
