@@ -37,15 +37,10 @@ window.addEventListener("load", async () => {
     document.getElementById("username").value = currentUser.username;
   }
 
-  // 🔥 NOVO: CARREGA FOTO SALVA
-  const savedPhoto = localStorage.getItem("photo");
-  if(savedPhoto){
-    currentUser.photo = savedPhoto;
+  // 🔥 MOSTRA FOTO NO PERFIL
+  if(currentUser.photo){
+    document.getElementById("profilePreview").src = currentUser.photo;
   }
-
-  // 🔥 MOSTRA FOTO (COM PADRÃO)
-  document.getElementById("profilePreview").src =
-    currentUser.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
   renderContacts();
 });
@@ -80,13 +75,14 @@ async function salvarPerfil(username, photo){
   });
 
   localStorage.setItem("username", username);
-  localStorage.setItem("photo", photo); // 🔥 NOVO
 
   currentUser.username = username;
   currentUser.photo = photo;
 
+  // 🔥 atualiza na tela
   document.getElementById("profilePreview").src = photo;
 
+  // 🔥 atualiza contatos automaticamente
   renderContacts();
 }
 
@@ -106,6 +102,7 @@ async function renderContacts(){
     const el = document.createElement("div");
     el.className = "contact";
 
+    // 🔥 FOTO + NOME
     el.innerHTML = `
       <img src="${user.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
            style="width:30px;height:30px;border-radius:50%;margin-right:10px;">
@@ -115,6 +112,7 @@ async function renderContacts(){
     el.style.display = "flex";
     el.style.alignItems = "center";
 
+    // 🔥 REMOVE SELEÇÃO AZUL
     el.style.userSelect = "none";
     el.style.webkitUserSelect = "none";
     el.style.webkitTapHighlightColor = "transparent";
@@ -229,7 +227,7 @@ function addMessage(m, user){
 }
 
 // =========================
-// LOAD MESSAGES
+// LOAD MESSAGES (SEM PISCAR)
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
