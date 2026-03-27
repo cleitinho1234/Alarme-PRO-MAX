@@ -37,6 +37,11 @@ window.addEventListener("load", async () => {
     document.getElementById("username").value = currentUser.username;
   }
 
+  // 🔥 MOSTRA FOTO NO PERFIL
+  if(currentUser.photo){
+    document.getElementById("profilePreview").src = currentUser.photo;
+  }
+
   renderContacts();
 });
 
@@ -73,10 +78,16 @@ async function salvarPerfil(username, photo){
 
   currentUser.username = username;
   currentUser.photo = photo;
+
+  // 🔥 atualiza na tela
+  document.getElementById("profilePreview").src = photo;
+
+  // 🔥 atualiza contatos automaticamente
+  renderContacts();
 }
 
 // =========================
-// CONTATOS
+// CONTATOS (AGORA COM FOTO)
 async function renderContacts(){
   const div = document.getElementById("contacts");
   div.innerHTML = "";
@@ -90,9 +101,23 @@ async function renderContacts(){
 
     const el = document.createElement("div");
     el.className = "contact";
-    el.textContent = contacts[i].username;
 
-    el.onclick = () => abrirChat(contacts[i]);
+    // 🔥 FOTO + NOME
+    el.innerHTML = `
+      <img src="${user.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
+           style="width:30px;height:30px;border-radius:50%;margin-right:10px;">
+      ${user.username}
+    `;
+
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+
+    // 🔥 REMOVE SELEÇÃO AZUL
+    el.style.userSelect = "none";
+    el.style.webkitUserSelect = "none";
+    el.style.webkitTapHighlightColor = "transparent";
+
+    el.onclick = () => abrirChat(user);
 
     div.appendChild(el);
   }
@@ -101,7 +126,7 @@ async function renderContacts(){
 }
 
 // =========================
-// ABRIR CHAT (🔥 CARREGA TUDO DE UMA VEZ)
+// ABRIR CHAT
 async function abrirChat(user){
 
   const res = await fetch(`/getUser/${user.id}`);
@@ -119,7 +144,6 @@ async function abrirChat(user){
   document.getElementById("chatAvatar").src =
     user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-  // 🔥 LIMPA E CARREGA TUDO DE UMA VEZ
   lastMessageId = null;
   await loadMessages(true);
 }
@@ -203,7 +227,7 @@ function addMessage(m, user){
 }
 
 // =========================
-// LOAD MESSAGES (🔥 SEM LOOP VISUAL)
+// LOAD MESSAGES (SEM PISCAR)
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
@@ -216,7 +240,6 @@ async function loadMessages(initial = false){
     (m.fromId == currentChat.id && m.toId == currentUser.id)
   );
 
-  // 🔥 PEGA TODOS USUÁRIOS DE UMA VEZ
   const usersCache = {};
 
   for (let m of filtered){
@@ -230,12 +253,10 @@ async function loadMessages(initial = false){
     const container = document.getElementById("messages");
     container.innerHTML = "";
 
-    // 🔥 MONTA TUDO NA MEMÓRIA PRIMEIRO
     let html = "";
 
     for (let m of filtered){
       const user = usersCache[m.fromId];
-
       const isMe = m.fromId == currentUser.id;
 
       html += `
@@ -247,7 +268,6 @@ async function loadMessages(initial = false){
       `;
     }
 
-    // 🔥 JOGA TUDO DE UMA VEZ (SEM PISCAR)
     container.innerHTML = html;
 
     if(filtered.length){
