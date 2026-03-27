@@ -2,23 +2,17 @@ let currentUser = null;
 let currentChatId = null;
 let lastMessageIds = new Set();
 
-// contatos salvos
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 
 // =========================
-// CARREGAR USUÁRIO
 window.addEventListener("load", async () => {
+
   let savedId = localStorage.getItem("userId");
 
   if (savedId) {
     const res = await fetch(`/getUser/${savedId}`);
     const user = await res.json();
-
-    if (!user.error) {
-      currentUser = user;
-    } else {
-      localStorage.removeItem("userId");
-    }
+    if (!user.error) currentUser = user;
   }
 
   if (!currentUser) {
@@ -27,7 +21,6 @@ window.addEventListener("load", async () => {
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ username: "Novo Usuário", photo: "" })
     });
-
     currentUser = await res.json();
     localStorage.setItem("userId", currentUser.id);
   }
@@ -47,51 +40,46 @@ window.addEventListener("load", async () => {
 });
 
 // =========================
-// MOSTRAR CONTATOS
 function renderContacts() {
-  const contactsDiv = document.getElementById("contacts");
-  const select = document.getElementById("friendSelect");
-
-  contactsDiv.innerHTML = "";
-  select.innerHTML = "";
+  const div = document.getElementById("contacts");
+  div.innerHTML = "";
 
   contacts.forEach(user => {
+    const el = document.createElement("div");
 
-    const option = document.createElement("option");
-    option.value = user.id;
-    option.textContent = user.username;
-    select.appendChild(option);
-
-    const div = document.createElement("div");
-
-    div.textContent =
+    el.textContent =
       user.username + " (ID: " + user.id + ")" +
       (user.novo ? " 🟢" : "");
 
-    div.addEventListener("click", () => {
-      openChat(user);
-    });
+    el.onclick = () => openChat(user);
 
-    contactsDiv.appendChild(div);
+    div.appendChild(el);
   });
 }
 
 // =========================
-// ABRIR CHAT
 function openChat(user){
+
   currentChatId = user.id;
 
-  document.getElementById("chatTitle").textContent =
-    "Conversando com: " + user.username;
+  document.getElementById("chatHeader").style.display = "flex";
+  document.getElementById("chatUserName").textContent = user.username;
+  document.getElementById("chatUserPhoto").src =
+    user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-  document.getElementById("friendSelect").value = user.id;
+  document.getElementById("contacts").style.display = "none";
+  document.getElementById("contactsTitle").style.display = "none";
+  document.getElementById("addUserId").style.display = "none";
+  document.getElementById("addFriendBtn").style.display = "none";
 
-  // 🔥 remove bolinha verde
+  document.getElementById("messages").style.display = "block";
+  document.getElementById("messageText").style.display = "block";
+  document.getElementById("sendMessageBtn").style.display = "block";
+
   user.novo = false;
   localStorage.setItem("contacts", JSON.stringify(contacts));
   renderContacts();
 
-  // limpa chat
   lastMessageIds.clear();
   document.getElementById("messages").innerHTML = "";
 
@@ -99,14 +87,25 @@ function openChat(user){
 }
 
 // =========================
-// SELECT MUDA CHAT
-document.getElementById("friendSelect").addEventListener("change", (e) => {
-  const user = contacts.find(c => c.id === e.target.value);
-  if(user) openChat(user);
-});
+function voltar(){
+
+  currentChatId = null;
+
+  document.getElementById("chatHeader").style.display = "none";
+
+  document.getElementById("contacts").style.display = "block";
+  document.getElementById("contactsTitle").style.display = "block";
+  document.getElementById("addUserId").style.display = "block";
+  document.getElementById("addFriendBtn").style.display = "block";
+
+  document.getElementById("messages").style.display = "none";
+  document.getElementById("messageText").style.display = "none";
+  document.getElementById("sendMessageBtn").style.display = "none";
+
+  document.getElementById("messages").innerHTML = "";
+}
 
 // =========================
-// SALVAR PERFIL
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -140,17 +139,13 @@ async function saveProfile(username, photo){
 }
 
 // =========================
-// ADICIONAR CONTATO
 document.getElementById("addFriendBtn").addEventListener("click", async () => {
-  const friendId = document.getElementById("addUserId").value.trim();
 
-  if(!friendId) return alert("Digite o ID");
-  if(friendId === currentUser.id) return alert("Você não pode adicionar você mesmo");
+  const id = document.getElementById("addUserId").value.trim();
+  if(!id) return;
 
-  const res = await fetch(`/getUser/${friendId}`);
+  const res = await fetch(`/getUser/${id}`);
   const user = await res.json();
-
-  if(user.error) return alert("Usuário não encontrado");
 
   if(!contacts.some(c => c.id === user.id)){
     contacts.push(user);
@@ -162,12 +157,11 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
 });
 
 // =========================
-// ENVIAR MENSAGEM
 document.getElementById("sendMessageBtn").addEventListener("click", async () => {
+
   const text = document.getElementById("messageText").value.trim();
 
-  if(!currentChatId) return alert("Selecione um contato");
-  if(!text) return alert("Digite a mensagem");
+  if(!text || !currentChatId) return;
 
   await fetch("/sendMessage", {
     method: "POST",
@@ -181,40 +175,31 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 
   document.getElementById("messageText").value = "";
 
-  addMessageToScreen({
-    fromId: currentUser.id,
-    text
-  });
+  addMessage(text);
 });
 
 // =========================
-// ADICIONAR MENSAGEM LOCAL
-function addMessageToScreen(m){
-  const messagesDiv = document.getElementById("messages");
+function addMessage(text){
 
-  const msgDiv = document.createElement("div");
-  msgDiv.className = "message me";
+  const div = document.createElement("div");
+  div.className = "message me";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = "Você: " + text;
 
   const img = document.createElement("img");
   img.className = "avatar";
   img.src = currentUser.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.textContent = `Você: ${m.text}`;
+  div.appendChild(bubble);
+  div.appendChild(img);
 
-  msgDiv.appendChild(bubble);
-  msgDiv.appendChild(img);
-
-  messagesDiv.appendChild(msgDiv);
-
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  document.getElementById("messages").appendChild(div);
 }
 
 // =========================
-// DETECTAR NOVOS CONTATOS
 async function loadMessages(){
-  if(!currentUser) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
@@ -222,17 +207,11 @@ async function loadMessages(){
   let mudou = false;
 
   for (let m of msgs){
-
     if(m.toId === currentUser.id){
-
-      const existe = contacts.some(c => c.id === m.fromId);
-
-      if(!existe){
-        const resUser = await fetch(`/getUser/${m.fromId}`);
-        const user = await resUser.json();
-
+      if(!contacts.some(c => c.id === m.fromId)){
+        const r = await fetch(`/getUser/${m.fromId}`);
+        const user = await r.json();
         user.novo = true;
-
         contacts.push(user);
         mudou = true;
       }
@@ -248,9 +227,8 @@ async function loadMessages(){
 }
 
 // =========================
-// CHAT SEM PISCAR
 async function loadChatMessages(){
-  if(!currentUser || !currentChatId) return;
+  if(!currentChatId) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
@@ -260,45 +238,43 @@ async function loadChatMessages(){
     (m.fromId === currentChatId && m.toId === currentUser.id)
   );
 
-  const messagesDiv = document.getElementById("messages");
+  const container = document.getElementById("messages");
 
   for (let m of filtradas){
 
-    if (lastMessageIds.has(m.id)) continue;
+    if(lastMessageIds.has(m.id)) continue;
     lastMessageIds.add(m.id);
 
     const isMe = m.fromId === currentUser.id;
 
-    const resUser = await fetch(`/getUser/${m.fromId}`);
-    const user = await resUser.json();
-
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `message ${isMe ? "me" : "other"}`;
-
-    const img = document.createElement("img");
-    img.className = "avatar";
-    img.src = user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    const div = document.createElement("div");
+    div.className = "message " + (isMe ? "me" : "other");
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
+    bubble.textContent = (isMe ? "Você: " : "") + m.text;
 
-    const nome = isMe ? "Você" : (user.username || m.fromId);
-    bubble.textContent = `${nome}: ${m.text}`;
+    const img = document.createElement("img");
+    img.className = "avatar";
 
-    if (isMe) {
-      msgDiv.appendChild(bubble);
-      msgDiv.appendChild(img);
+    const r = await fetch(`/getUser/${m.fromId}`);
+    const user = await r.json();
+
+    img.src = user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+    if(isMe){
+      div.appendChild(bubble);
+      div.appendChild(img);
     } else {
-      msgDiv.appendChild(img);
-      msgDiv.appendChild(bubble);
+      div.appendChild(img);
+      div.appendChild(bubble);
     }
 
-    messagesDiv.appendChild(msgDiv);
+    container.appendChild(div);
   }
 
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-// ATUALIZA AUTOMÁTICO
 setInterval(loadMessages, 3000);
