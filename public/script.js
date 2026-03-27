@@ -1,95 +1,120 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const path = require("path");
-
-const app = express();
-app.use(express.json({ limit: "10mb" })); // IMPORTANTE pra foto
-app.use(express.static(path.join(__dirname, "public")));
-
-mongoose.connect("SUA_URL_MONGO")
-  .then(() => console.log("Mongo conectado"))
-  .catch(err => console.log(err));
+let currentUser = null;
+const contacts = [];
 
 // =========================
-const User = mongoose.model("User", {
-  id: String,
-  username: String,
-  photo: String
-});
+// Carregar usuário
+window.addEventListener("load", async () => {
+  let savedId = localStorage.getItem("userId");
 
-const Message = mongoose.model("Message", {
-  fromId: String,
-  toId: String,
-  text: String,
-  timestamp: Number
-});
+  if (savedId) {
+    const res = await fetch(`/getUser/${savedId}`);
+    const user = await res.json();
 
-// =========================
-// Criar usuário
-app.post("/user", async (req, res) => {
-  let id;
-
-  while (true) {
-    id = Math.floor(1000 + Math.random() * 9000).toString();
-    const existe = await User.findOne({ id });
-    if (!existe) break;
+    if (!user.error) {
+      currentUser = user;
+    } else {
+      localStorage.removeItem("userId");
+    }
   }
 
-  const user = new User({
-    id,
-    username: "Novo Usuário",
-    photo: ""
-  });
+  if (!currentUser) {
+    const res = await fetch("/user", { method: "POST" });
+    currentUser = await res.json();
+    localStorage.setItem("userId", currentUser.id);
+  }
 
-  await user.save();
-  res.json(user);
+  document.getElementById("userIdDisplay").textContent = currentUser.id;
+  document.getElementById("username").value = currentUser.username || "";
+  document.getElementById("profilePreview").src = currentUser.photo || "";
+
+  loadMessages();
 });
 
 // =========================
 // SALVAR PERFIL
-app.post("/saveProfile", async (req, res) => {
-  const { id, username, photo } = req.body;
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-  const user = await User.findOneAndUpdate(
-    { id },
-    { username, photo },
-    { new: true, upsert: true }
-  );
+  const username = document.getElementById("username").value;
+  const file = document.getElementById("profilePic").files[0];
 
-  res.json(user);
+  let photo = currentUser.photo;
+
+  if (file) {
+    const reader = new FileReader();
+
+    reader.onload = async () => {
+      photo = reader.result;
+
+      // 🔥 MOSTRA NA HORA
+      document.getElementById("profilePreview").src = photo;
+
+      await saveProfile(username, photo);
+    };
+
+    reader.readAsDataURL(file);
+  } else {
+    await saveProfile(username, photo);
+  }
 });
 
-// =========================
-// Buscar usuário
-app.get("/getUser/:id", async (req, res) => {
-  const user = await User.findOne({ id: req.params.id });
+async function saveProfile(username, photo) {
+  const res = await fetch("/saveProfile", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      id: currentUser.id,
+      username,
+      photo
+    })
+  });
 
-  if (user) res.json(user);
-  else res.status(404).json({ error: "Usuário não encontrado" });
+  const updatedUser = await res.json();
+  currentUser = updatedUser;
+
+  document.getElementById("username").value = currentUser.username || "";
+  document.getElementById("profilePreview").src = currentUser.photo || "";
+}
+
+// =========================
+// Copiar ID
+document.getElementById("copyIdBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(currentUser.id);
+  alert("ID copiado!");
 });
 
 // =========================
 // Mensagens
-app.post("/sendMessage", async (req, res) => {
-  const { fromId, toId, text } = req.body;
+document.getElementById("sendMessageBtn").addEventListener("click", async () => {
+  const toId = document.getElementById("friendSelect").value;
+  const text = document.getElementById("messageText").value.trim();
 
-  const msg = await Message.create({
-    fromId,
-    toId,
-    text,
-    timestamp: Date.now()
+  if (!toId || !text) return alert("Preencha tudo");
+
+  await fetch("/sendMessage", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      fromId: currentUser.id,
+      toId,
+      text
+    })
   });
 
-  res.json(msg);
+  document.getElementById("messageText").value = "";
+  loadMessages();
 });
 
-app.get("/getMessages/:id", async (req, res) => {
-  const msgs = await Message.find({
-    $or: [{ fromId: req.params.id }, { toId: req.params.id }]
-  }).sort({ timestamp: 1 });
+async function loadMessages() {
+  const res = await fetch(`/getMessages/${currentUser.id}`);
+  const msgs = await res.json();
 
-  res.json(msgs);
-});
+  const div = document.getElementById("messages");
+  div.innerHTML = "";
 
-// =========================
-app.listen(3000, () => console.log("Servidor rodando"));
+  msgs.forEach(m => {
+    const el = document.createElement("div");
+    el.textContent = `${m.fromId === currentUser.id ? "Você" : m.fromId}: ${m.text}`;
+    div.appendChild(el);
+  });
+        }
