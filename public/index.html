@@ -2,23 +2,21 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-
-<!-- 🔥 ESSENCIAL PRA CELULAR -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Mini-Zap-4</title>
+<title>Mini-Zap</title>
 
 <style>
 body {
   font-family: Arial;
-  background: #f0f0f0;
-  padding: 10px;
+  background: #e5ddd5;
   margin: 0;
+  padding: 10px;
   max-width: 600px;
   margin: auto;
 }
 
-/* inputs, botões e select */
+/* inputs */
 input, button, select {
   width: 100%;
   padding: 12px;
@@ -27,10 +25,10 @@ input, button, select {
   box-sizing: border-box;
 }
 
-/* imagem perfil */
+/* perfil */
 #profilePreview {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   margin-top: 10px;
 }
@@ -41,28 +39,56 @@ input, button, select {
   background: #ddd;
   margin-bottom: 5px;
   border-radius: 5px;
-  font-size: 16px;
-}
-
-/* mensagens */
-#messages {
-  border: 1px solid #ccc;
-  padding: 10px;
-  height: 250px;
-  overflow-y: scroll;
-  background: #fff;
-  margin-bottom: 10px;
-  font-size: 16px;
-}
-
-/* títulos */
-h2 {
-  font-size: 18px;
-}
-
-/* botão */
-button {
   cursor: pointer;
+}
+
+/* chat */
+#messages {
+  height: 300px;
+  overflow-y: scroll;
+  background: #ece5dd;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* mensagem */
+.message {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: flex-end;
+}
+
+.me {
+  justify-content: flex-end;
+}
+
+.other {
+  justify-content: flex-start;
+}
+
+/* bolha */
+.bubble {
+  max-width: 70%;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.me .bubble {
+  background: #dcf8c6;
+}
+
+.other .bubble {
+  background: #fff;
+}
+
+/* foto */
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin: 0 5px;
 }
 </style>
 </head>
@@ -79,16 +105,11 @@ button {
 
 <img id="profilePreview" src="">
 
-<p>
-  Seu ID: 
-  <span id="userIdDisplay"></span> 
-  <button id="copyIdBtn">Copiar ID</button>
-</p>
+<p>Seu ID: <span id="userIdDisplay"></span></p>
 
 <hr>
 
-<h2>Adicionar Contato</h2>
-
+<h2>Contatos</h2>
 <input type="text" id="addUserId" placeholder="ID do amigo">
 <button id="addFriendBtn">Adicionar</button>
 
@@ -96,7 +117,7 @@ button {
 
 <hr>
 
-<h2>Mensagens</h2>
+<h2>Chat</h2>
 
 <div id="messages"></div>
 
@@ -107,4 +128,4 @@ button {
 <script src="script.js"></script>
 
 </body>
-</html>
+    </html>
