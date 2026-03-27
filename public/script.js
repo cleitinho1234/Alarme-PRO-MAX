@@ -46,30 +46,57 @@ window.addEventListener("load", async () => {
 });
 
 // =========================
-// MOSTRAR CONTATOS
+// MOSTRAR CONTATOS (LISTA + SELECT)
 function renderContacts() {
   const contactsDiv = document.getElementById("contacts");
+  const select = document.getElementById("friendSelect");
 
   contactsDiv.innerHTML = "";
+  select.innerHTML = "";
 
   contacts.forEach(user => {
 
+    // SELECT (dropdown)
+    const option = document.createElement("option");
+    option.value = user.id;
+    option.textContent = user.username;
+    select.appendChild(option);
+
+    // LISTA VISUAL
     const div = document.createElement("div");
     div.textContent = user.username + " (ID: " + user.id + ")";
 
-    // 🔥 clicar abre conversa
     div.addEventListener("click", () => {
       currentChatId = user.id;
 
       document.getElementById("chatTitle").textContent =
         "Conversando com: " + user.username;
 
-      loadMessages(true); // força carregar tudo
+      select.value = user.id;
+
+      loadMessages(true);
     });
 
     contactsDiv.appendChild(div);
   });
 }
+
+// =========================
+// SELECT MUDA CHAT
+document.getElementById("friendSelect").addEventListener("change", (e) => {
+  const selectedId = e.target.value;
+
+  const user = contacts.find(c => c.id === selectedId);
+
+  if(user){
+    currentChatId = user.id;
+
+    document.getElementById("chatTitle").textContent =
+      "Conversando com: " + user.username;
+
+    loadMessages(true);
+  }
+});
 
 // =========================
 // SALVAR PERFIL
@@ -163,7 +190,6 @@ async function loadMessages(force = false){
     (m.fromId === currentChatId && m.toId === currentUser.id)
   );
 
-  // 🔥 só atualiza se mudou
   if (!force && filtradas.length === lastMessageCount) return;
 
   lastMessageCount = filtradas.length;
@@ -209,5 +235,5 @@ async function loadMessages(force = false){
 }
 
 // =========================
-// ATUALIZA AUTOMATICO SEM PISCAR
+// ATUALIZA AUTOMÁTICO SEM PISCAR
 setInterval(() => loadMessages(false), 3000);
