@@ -2,6 +2,8 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+
+<!-- 🔥 RESPONSIVO -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Mini-Zap</title>
@@ -11,68 +13,65 @@ body {
   font-family: Arial;
   background: #e5ddd5;
   margin: 0;
-  padding: 10px;
-  max-width: 600px;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 500px;
   margin: auto;
+  padding: 10px;
 }
 
-/* inputs */
-input, button, select {
-  width: 100%;
-  padding: 12px;
-  margin-top: 5px;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-/* perfil */
+/* PERFIL */
 #profilePreview {
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  margin-top: 10px;
 }
 
-/* contatos */
+/* CONTATOS */
 #contacts div {
   padding: 10px;
-  background: #ddd;
+  background: #fff;
   margin-bottom: 5px;
-  border-radius: 5px;
-  cursor: pointer;
+  border-radius: 8px;
 }
 
-/* chat */
+/* CHAT */
 #messages {
   height: 300px;
-  overflow-y: scroll;
-  background: #ece5dd;
+  overflow-y: auto;
+  background: #efeae2;
   padding: 10px;
   border-radius: 10px;
-  margin-bottom: 10px;
 }
 
-/* mensagem */
+/* MENSAGEM */
 .message {
   display: flex;
-  margin-bottom: 10px;
   align-items: flex-end;
+  margin: 5px 0;
 }
 
-.me {
+.message.me {
   justify-content: flex-end;
 }
 
-.other {
+.message.other {
   justify-content: flex-start;
 }
 
-/* bolha */
+.avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+}
+
 .bubble {
   max-width: 70%;
   padding: 10px;
   border-radius: 10px;
-  font-size: 14px;
+  margin: 5px;
 }
 
 .me .bubble {
@@ -80,20 +79,21 @@ input, button, select {
 }
 
 .other .bubble {
-  background: #fff;
+  background: white;
 }
 
-/* foto */
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  margin: 0 5px;
+/* INPUT */
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
 }
 </style>
 </head>
 
 <body>
+
+<div class="container">
 
 <h2>Seu Perfil</h2>
 
@@ -103,13 +103,15 @@ input, button, select {
   <button type="submit">Salvar Perfil</button>
 </form>
 
-<img id="profilePreview" src="">
+<img id="profilePreview">
 
 <p>Seu ID: <span id="userIdDisplay"></span></p>
+<button id="copyIdBtn">Copiar ID</button>
 
 <hr>
 
 <h2>Contatos</h2>
+
 <input type="text" id="addUserId" placeholder="ID do amigo">
 <button id="addFriendBtn">Adicionar</button>
 
@@ -125,7 +127,9 @@ input, button, select {
 <select id="friendSelect"></select>
 <button id="sendMessageBtn">Enviar</button>
 
+</div>
+
 <script src="script.js"></script>
 
 </body>
-    </html>
+</html>
