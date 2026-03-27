@@ -62,6 +62,12 @@ function abrirChat(user){
 
   document.getElementById("chatName").textContent = user.username;
 
+  // 🔥 FOTO NO TOPO
+  const avatar = document.getElementById("chatAvatar");
+  avatar.src = user.photo && user.photo !== ""
+    ? user.photo
+    : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
   lastMessageId = null;
   document.getElementById("messages").innerHTML = "";
 
@@ -73,7 +79,6 @@ function abrirChat(user){
 function voltar(){
   document.getElementById("chatScreen").style.display = "none";
   document.getElementById("home").style.display = "block";
-
   currentChat = null;
 }
 
@@ -115,7 +120,6 @@ document.getElementById("sendMessageBtn").onclick = async () => {
 
   document.getElementById("messageText").value = "";
 
-  // 🔥 adiciona direto (SEM atualizar tudo)
   addMessage({
     fromId: currentUser.id,
     text
@@ -123,7 +127,7 @@ document.getElementById("sendMessageBtn").onclick = async () => {
 };
 
 // =========================
-// ADICIONAR MENSAGEM NA TELA
+// ADICIONAR MENSAGEM
 function addMessage(m){
 
   const div = document.createElement("div");
@@ -136,10 +140,13 @@ function addMessage(m){
   div.appendChild(bubble);
 
   document.getElementById("messages").appendChild(div);
+
+  document.getElementById("messages").scrollTop =
+    document.getElementById("messages").scrollHeight;
 }
 
 // =========================
-// CARREGAR MENSAGENS
+// CARREGAR
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
