@@ -1,6 +1,8 @@
 let currentUser = null;
 let currentChatId = null;
-let lastMessageCount = 0;
+
+// 🔥 controla mensagens já exibidas
+let lastMessageIds = new Set();
 
 // contatos salvos
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
@@ -56,25 +58,16 @@ function renderContacts() {
 
   contacts.forEach(user => {
 
-    // select
     const option = document.createElement("option");
     option.value = user.id;
     option.textContent = user.username;
     select.appendChild(option);
 
-    // lista
     const div = document.createElement("div");
     div.textContent = user.username + " (ID: " + user.id + ")";
 
     div.addEventListener("click", () => {
-      currentChatId = user.id;
-
-      document.getElementById("chatTitle").textContent =
-        "Conversando com: " + user.username;
-
-      select.value = user.id;
-
-      loadMessages(true);
+      openChat(user);
     });
 
     contactsDiv.appendChild(div);
@@ -82,20 +75,27 @@ function renderContacts() {
 }
 
 // =========================
-// SELECT troca chat
+// ABRIR CHAT
+function openChat(user){
+  currentChatId = user.id;
+
+  document.getElementById("chatTitle").textContent =
+    "Conversando com: " + user.username;
+
+  document.getElementById("friendSelect").value = user.id;
+
+  // 🔥 limpa tela SEM bug
+  lastMessageIds.clear();
+  document.getElementById("messages").innerHTML = "";
+
+  loadMessages();
+}
+
+// =========================
+// SELECT MUDA CHAT
 document.getElementById("friendSelect").addEventListener("change", (e) => {
-  const selectedId = e.target.value;
-
-  const user = contacts.find(c => c.id === selectedId);
-
-  if(user){
-    currentChatId = user.id;
-
-    document.getElementById("chatTitle").textContent =
-      "Conversando com: " + user.username;
-
-    loadMessages(true);
-  }
+  const user = contacts.find(c => c.id === e.target.value);
+  if(user) openChat(user);
 });
 
 // =========================
@@ -155,7 +155,7 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
 });
 
 // =========================
-// ENVIAR MENSAGEM (SEM RECARREGAR TUDO)
+// ENVIAR MENSAGEM (SEM PISCAR)
 document.getElementById("sendMessageBtn").addEventListener("click", async () => {
   const text = document.getElementById("messageText").value.trim();
 
@@ -174,7 +174,7 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 
   document.getElementById("messageText").value = "";
 
-  // 🔥 adiciona direto sem reload
+  // 🔥 adiciona direto na tela
   addMessageToScreen({
     fromId: currentUser.id,
     text
@@ -182,7 +182,7 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 });
 
 // =========================
-// ADICIONAR MENSAGEM NA TELA
+// ADICIONAR MENSAGEM LOCAL
 function addMessageToScreen(m){
   const messagesDiv = document.getElementById("messages");
 
@@ -206,8 +206,8 @@ function addMessageToScreen(m){
 }
 
 // =========================
-// CARREGAR MENSAGENS (SEM PISCAR)
-async function loadMessages(force = false){
+// CARREGAR MENSAGENS (SEM PISCAR REAL)
+async function loadMessages(){
   if(!currentUser || !currentChatId) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
@@ -218,42 +218,29 @@ async function loadMessages(force = false){
     (m.fromId === currentChatId && m.toId === currentUser.id)
   );
 
-  if (!force && filtradas.length === lastMessageCount) return;
-
-  lastMessageCount = filtradas.length;
-
   const messagesDiv = document.getElementById("messages");
-  messagesDiv.innerHTML = "";
 
-  const ids = [...new Set(filtradas.map(m => m.fromId))];
+  for (let m of filtradas){
 
-  const usersData = await Promise.all(
-    ids.map(id => fetch(`/getUser/${id}`).then(r => r.json()))
-  );
-
-  const usersMap = {};
-  usersData.forEach(u => {
-    usersMap[u.id] = u;
-  });
-
-  filtradas.forEach(m => {
+    if (lastMessageIds.has(m.id)) continue;
+    lastMessageIds.add(m.id);
 
     const isMe = m.fromId === currentUser.id;
-    const user = usersMap[m.fromId];
+
+    const resUser = await fetch(`/getUser/${m.fromId}`);
+    const user = await resUser.json();
 
     const msgDiv = document.createElement("div");
     msgDiv.className = `message ${isMe ? "me" : "other"}`;
 
     const img = document.createElement("img");
     img.className = "avatar";
-    img.src = user && user.photo
-      ? user.photo
-      : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    img.src = user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
 
-    const nome = isMe ? "Você" : (user?.username || m.fromId);
+    const nome = isMe ? "Você" : (user.username || m.fromId);
     bubble.textContent = `${nome}: ${m.text}`;
 
     if (isMe) {
@@ -265,11 +252,11 @@ async function loadMessages(force = false){
     }
 
     messagesDiv.appendChild(msgDiv);
-  });
+  }
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 // =========================
-// ATUALIZA SEM PISCAR
-setInterval(() => loadMessages(false), 3000);
+// ATUALIZA SEM BUG
+setInterval(loadMessages, 3000);
