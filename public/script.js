@@ -7,7 +7,6 @@ window.addEventListener("load", async () => {
   let savedId = localStorage.getItem("userId");
 
   if (savedId) {
-    // tenta pegar usuário existente
     const res = await fetch(`/getUser/${savedId}`);
     const user = await res.json();
 
@@ -18,7 +17,7 @@ window.addEventListener("load", async () => {
     }
   }
 
-  // se não existir → cria novo
+  // Se não existir → cria novo
   if (!currentUser) {
     const res = await fetch("/user", {
       method: "POST",
@@ -27,21 +26,19 @@ window.addEventListener("load", async () => {
     });
 
     currentUser = await res.json();
-
-    // salva ID no navegador
     localStorage.setItem("userId", currentUser.id);
   }
 
-  // mostra ID
+  // Mostrar ID
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-  // mantém nome
-  if(currentUser.username){
+  // Manter nome
+  if (currentUser.username) {
     document.getElementById("username").value = currentUser.username;
   }
 
-  // mantém foto
-  if(currentUser.photo){
+  // 🔥 Manter foto ao recarregar
+  if (currentUser.photo && currentUser.photo !== "") {
     document.getElementById("profilePreview").src = currentUser.photo;
   }
 
@@ -52,33 +49,42 @@ window.addEventListener("load", async () => {
 // Salvar perfil (nome e foto)
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const username = document.getElementById("username").value;
   const file = document.getElementById("profilePic").files[0];
   let photo = currentUser.photo;
 
-  if(file){
+  if (file) {
     const reader = new FileReader();
+
     reader.onload = async () => {
       photo = reader.result;
+
       await saveProfile(username, photo);
-    }
+    };
+
     reader.readAsDataURL(file);
   } else {
     await saveProfile(username, photo);
   }
 });
 
-async function saveProfile(username, photo){
+async function saveProfile(username, photo) {
   await fetch("/saveProfile", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ id: currentUser.id, username, photo })
+    body: JSON.stringify({
+      id: currentUser.id,
+      username,
+      photo
+    })
   });
 
   currentUser.username = username;
   currentUser.photo = photo;
 
-  document.getElementById("profilePreview").src = photo;
+  // 🔥 Atualiza imagem na hora
+  document.getElementById("profilePreview").src = photo || "";
 }
 
 // =========================
@@ -92,26 +98,29 @@ document.getElementById("copyIdBtn").addEventListener("click", () => {
 // Adicionar contato
 document.getElementById("addFriendBtn").addEventListener("click", async () => {
   const friendId = document.getElementById("addUserId").value.trim();
-  if(!friendId) return alert("Digite o ID do amigo");
-  if(friendId === currentUser.id) return alert("Você não pode adicionar seu próprio ID");
+
+  if (!friendId) return alert("Digite o ID do amigo");
+  if (friendId === currentUser.id) return alert("Você não pode adicionar seu próprio ID");
 
   const res = await fetch(`/getUser/${friendId}`);
   const user = await res.json();
-  if(user.error) return alert("Usuário não encontrado");
 
-  if(!contacts.some(c=>c.id===user.id)){
+  if (user.error) return alert("Usuário não encontrado");
+
+  if (!contacts.some(c => c.id === user.id)) {
     contacts.push(user);
 
-    // adicionar ao select
     const select = document.getElementById("friendSelect");
     const option = document.createElement("option");
+
     option.value = user.id;
     option.textContent = user.username;
+
     select.appendChild(option);
 
-    // adicionar à lista de contatos
     const div = document.createElement("div");
     div.textContent = user.username + " (ID: " + user.id + ")";
+
     document.getElementById("contacts").appendChild(div);
   }
 
@@ -123,12 +132,19 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
 document.getElementById("sendMessageBtn").addEventListener("click", async () => {
   const toId = document.getElementById("friendSelect").value;
   const text = document.getElementById("messageText").value.trim();
-  if(!toId || !text) return alert("Selecione um amigo e digite a mensagem");
+
+  if (!toId || !text) {
+    return alert("Selecione um amigo e digite a mensagem");
+  }
 
   await fetch("/sendMessage", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ fromId: currentUser.id, toId, text })
+    body: JSON.stringify({
+      fromId: currentUser.id,
+      toId,
+      text
+    })
   });
 
   document.getElementById("messageText").value = "";
@@ -137,8 +153,8 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 
 // =========================
 // Carregar mensagens
-async function loadMessages(){
-  if(!currentUser) return;
+async function loadMessages() {
+  if (!currentUser) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
@@ -146,9 +162,11 @@ async function loadMessages(){
   const messagesDiv = document.getElementById("messages");
   messagesDiv.innerHTML = "";
 
-  msgs.forEach(m=>{
+  msgs.forEach(m => {
     const div = document.createElement("div");
+
     const from = m.fromId === currentUser.id ? "Você" : m.fromId;
+
     div.textContent = `${from}: ${m.text}`;
     messagesDiv.appendChild(div);
   });
