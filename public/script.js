@@ -3,6 +3,7 @@ let currentChat = null;
 let lastMessageId = null;
 
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+let newUsers = JSON.parse(localStorage.getItem("newUsers")) || [];
 
 // =========================
 // INICIAR
@@ -37,7 +38,6 @@ window.addEventListener("load", async () => {
     document.getElementById("username").value = currentUser.username;
   }
 
-  // 🔥 MOSTRA FOTO NO PERFIL
   if(currentUser.photo){
     document.getElementById("profilePreview").src = currentUser.photo;
   }
@@ -79,15 +79,13 @@ async function salvarPerfil(username, photo){
   currentUser.username = username;
   currentUser.photo = photo;
 
-  // 🔥 atualiza na tela
   document.getElementById("profilePreview").src = photo;
 
-  // 🔥 atualiza contatos automaticamente
   renderContacts();
 }
 
 // =========================
-// CONTATOS (AGORA COM FOTO)
+// CONTATOS (COM NOVO USUÁRIO 🟢)
 async function renderContacts(){
   const div = document.getElementById("contacts");
   div.innerHTML = "";
@@ -99,20 +97,21 @@ async function renderContacts(){
 
     if(!user.error) contacts[i] = user;
 
+    const isNew = newUsers.includes(user.id);
+
     const el = document.createElement("div");
     el.className = "contact";
 
-    // 🔥 FOTO + NOME
     el.innerHTML = `
       <img src="${user.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
            style="width:30px;height:30px;border-radius:50%;margin-right:10px;">
-      ${user.username}
+      <span>${user.username}</span>
+      ${isNew ? `<span style="margin-left:auto;width:10px;height:10px;background:green;border-radius:50%;"></span>` : ""}
     `;
 
     el.style.display = "flex";
     el.style.alignItems = "center";
 
-    // 🔥 REMOVE SELEÇÃO AZUL
     el.style.userSelect = "none";
     el.style.webkitUserSelect = "none";
     el.style.webkitTapHighlightColor = "transparent";
@@ -143,6 +142,10 @@ async function abrirChat(user){
 
   document.getElementById("chatAvatar").src =
     user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+  // 🔥 REMOVE BOLINHA VERDE
+  newUsers = newUsers.filter(id => id != user.id);
+  localStorage.setItem("newUsers", JSON.stringify(newUsers));
 
   lastMessageId = null;
   await loadMessages(true);
@@ -227,13 +230,36 @@ function addMessage(m, user){
 }
 
 // =========================
-// LOAD MESSAGES (SEM PISCAR)
+// LOAD MESSAGES
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
+
+  // 🔥 DETECTA USUÁRIOS NOVOS
+  for (let m of msgs){
+    if(m.toId == currentUser.id){
+      if(!contacts.some(c => c.id == m.fromId)){
+
+        const resUser = await fetch(`/getUser/${m.fromId}`);
+        const user = await resUser.json();
+
+        if(!user.error){
+          contacts.push(user);
+          localStorage.setItem("contacts", JSON.stringify(contacts));
+
+          if(!newUsers.includes(user.id)){
+            newUsers.push(user.id);
+            localStorage.setItem("newUsers", JSON.stringify(newUsers));
+          }
+
+          renderContacts();
+        }
+      }
+    }
+  }
 
   const filtered = msgs.filter(m =>
     (m.fromId == currentUser.id && m.toId == currentChat.id) ||
