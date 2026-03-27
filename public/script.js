@@ -33,14 +33,10 @@ window.addEventListener("load", async () => {
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
   // Manter nome
-  if (currentUser.username) {
-    document.getElementById("username").value = currentUser.username;
-  }
+  document.getElementById("username").value = currentUser.username || "";
 
   // 🔥 Manter foto ao recarregar
-  if (currentUser.photo && currentUser.photo !== "") {
-    document.getElementById("profilePreview").src = currentUser.photo;
-  }
+  document.getElementById("profilePreview").src = currentUser.photo || "";
 
   loadMessages();
 });
@@ -52,6 +48,7 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
   const username = document.getElementById("username").value;
   const file = document.getElementById("profilePic").files[0];
+
   let photo = currentUser.photo;
 
   if (file) {
@@ -59,7 +56,6 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
     reader.onload = async () => {
       photo = reader.result;
-
       await saveProfile(username, photo);
     };
 
@@ -69,8 +65,10 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
   }
 });
 
+// =========================
+// 🔥 CORRIGIDO AQUI
 async function saveProfile(username, photo) {
-  await fetch("/saveProfile", {
+  const res = await fetch("/saveProfile", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({
@@ -80,11 +78,14 @@ async function saveProfile(username, photo) {
     })
   });
 
-  currentUser.username = username;
-  currentUser.photo = photo;
+  // 🔥 pega o usuário atualizado do banco
+  const updatedUser = await res.json();
 
-  // 🔥 Atualiza imagem na hora
-  document.getElementById("profilePreview").src = photo || "";
+  currentUser = updatedUser;
+
+  // 🔥 atualiza tela corretamente
+  document.getElementById("username").value = currentUser.username || "";
+  document.getElementById("profilePreview").src = currentUser.photo || "";
 }
 
 // =========================
