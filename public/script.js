@@ -1,5 +1,7 @@
 let currentUser = null;
-const contacts = [];
+
+// 🔥 carregar contatos do localStorage
+const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 
 // =========================
 // Carregar ou criar usuário (FIXO)
@@ -17,7 +19,6 @@ window.addEventListener("load", async () => {
     }
   }
 
-  // se não tiver usuário → cria novo
   if (!currentUser) {
     const res = await fetch("/user", {
       method: "POST",
@@ -31,7 +32,6 @@ window.addEventListener("load", async () => {
 
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-  // manter nome e foto ao recarregar
   if(currentUser.username){
     document.getElementById("username").value = currentUser.username;
   }
@@ -40,11 +40,44 @@ window.addEventListener("load", async () => {
     document.getElementById("profilePreview").src = currentUser.photo;
   }
 
+  // 🔥 renderiza contatos salvos
+  renderContacts();
+
   loadMessages();
 });
 
 // =========================
-// Salvar perfil (nome e foto)
+// FUNÇÃO PRA MOSTRAR CONTATOS
+function renderContacts() {
+  const contactsDiv = document.getElementById("contacts");
+  const select = document.getElementById("friendSelect");
+
+  contactsDiv.innerHTML = "";
+  select.innerHTML = "";
+
+  contacts.forEach(user => {
+
+    // select
+    const option = document.createElement("option");
+    option.value = user.id;
+    option.textContent = user.username;
+    select.appendChild(option);
+
+    // lista visual
+    const div = document.createElement("div");
+    div.textContent = user.username + " (ID: " + user.id + ")";
+
+    // 🔥 clicar seleciona o contato
+    div.addEventListener("click", () => {
+      select.value = user.id;
+    });
+
+    contactsDiv.appendChild(div);
+  });
+}
+
+// =========================
+// Salvar perfil
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("username").value;
@@ -69,8 +102,10 @@ async function saveProfile(username, photo){
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ id: currentUser.id, username, photo })
   });
+
   currentUser.username = username;
   currentUser.photo = photo;
+
   document.getElementById("profilePreview").src = photo;
 }
 
@@ -82,28 +117,28 @@ document.getElementById("copyIdBtn").addEventListener("click", () => {
 });
 
 // =========================
-// Adicionar contato
+// ADICIONAR CONTATO (ATUALIZADO)
 document.getElementById("addFriendBtn").addEventListener("click", async () => {
   const friendId = document.getElementById("addUserId").value.trim();
+
   if(!friendId) return alert("Digite o ID do amigo");
   if(friendId === currentUser.id) return alert("Você não pode adicionar seu próprio ID");
 
   const res = await fetch(`/getUser/${friendId}`);
   const user = await res.json();
+
   if(user.error) return alert("Usuário não encontrado");
 
-  if(!contacts.some(c=>c.id===user.id)){
+  if(!contacts.some(c => c.id === user.id)){
+
+    // 🔥 adiciona no array
     contacts.push(user);
 
-    const select = document.getElementById("friendSelect");
-    const option = document.createElement("option");
-    option.value = user.id;
-    option.textContent = user.username;
-    select.appendChild(option);
+    // 🔥 salva no localStorage
+    localStorage.setItem("contacts", JSON.stringify(contacts));
 
-    const div = document.createElement("div");
-    div.textContent = user.username + " (ID: " + user.id + ")";
-    document.getElementById("contacts").appendChild(div);
+    // 🔥 atualiza tela
+    renderContacts();
   }
 
   document.getElementById("addUserId").value = "";
@@ -114,6 +149,7 @@ document.getElementById("addFriendBtn").addEventListener("click", async () => {
 document.getElementById("sendMessageBtn").addEventListener("click", async () => {
   const toId = document.getElementById("friendSelect").value;
   const text = document.getElementById("messageText").value.trim();
+
   if(!toId || !text) return alert("Selecione um amigo e digite a mensagem");
 
   await fetch("/sendMessage", {
@@ -130,6 +166,7 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 // Carregar mensagens
 async function loadMessages(){
   if(!currentUser) return;
+
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
 
@@ -146,5 +183,5 @@ async function loadMessages(){
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Atualiza mensagens a cada 3s
+// Atualiza mensagens
 setInterval(loadMessages, 3000);
