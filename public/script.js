@@ -1,9 +1,8 @@
 let currentUser = null;
 let currentChatId = null; // 🔥 conversa atual
+let lastMessages = ""; // 🔥 evita piscar
 
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
-
-let lastMessageCount = 0;
 
 // =========================
 // CARREGAR USUÁRIO
@@ -14,8 +13,11 @@ window.addEventListener("load", async () => {
     const res = await fetch(`/getUser/${savedId}`);
     const user = await res.json();
 
-    if (!user.error) currentUser = user;
-    else localStorage.removeItem("userId");
+    if (!user.error) {
+      currentUser = user;
+    } else {
+      localStorage.removeItem("userId");
+    }
   }
 
   if (!currentUser) {
@@ -57,8 +59,7 @@ function renderContacts() {
     // 🔥 clicar abre conversa
     div.addEventListener("click", () => {
       currentChatId = user.id;
-      document.getElementById("messages").innerHTML = "";
-      lastMessageCount = 0;
+      document.getElementById("chatWith").textContent = user.username;
       loadMessages();
     });
 
@@ -105,13 +106,12 @@ async function saveProfile(username, photo){
 document.getElementById("addFriendBtn").addEventListener("click", async () => {
   const friendId = document.getElementById("addUserId").value.trim();
 
-  if(!friendId) return alert("Digite o ID");
-  if(friendId === currentUser.id) return alert("ID inválido");
+  if(!friendId) return alert("Digite o ID do amigo");
 
   const res = await fetch(`/getUser/${friendId}`);
   const user = await res.json();
 
-  if(user.error) return alert("Não encontrado");
+  if(user.error) return alert("Usuário não encontrado");
 
   if(!contacts.some(c => c.id === user.id)){
     contacts.push(user);
@@ -145,23 +145,30 @@ document.getElementById("sendMessageBtn").addEventListener("click", async () => 
 });
 
 // =========================
-// CARREGAR MENSAGENS (POR CONVERSA)
+// CARREGAR MENSAGENS (SEM PISCAR)
 async function loadMessages(){
   if(!currentUser || !currentChatId) return;
 
   const res = await fetch(`/getMessages/${currentUser.id}`);
   const msgs = await res.json();
 
-  const messagesDiv = document.getElementById("messages");
-  messagesDiv.innerHTML = "";
-
-  // 🔥 filtra só mensagens da conversa atual
-  const conversa = msgs.filter(m =>
+  // 🔥 filtrar só conversa atual
+  const filtered = msgs.filter(m =>
     (m.fromId === currentUser.id && m.toId === currentChatId) ||
     (m.fromId === currentChatId && m.toId === currentUser.id)
   );
 
-  for (let m of conversa){
+  const newHash = JSON.stringify(filtered);
+
+  // 🔥 se não mudou → não atualiza (remove piscar)
+  if(newHash === lastMessages) return;
+
+  lastMessages = newHash;
+
+  const messagesDiv = document.getElementById("messages");
+  messagesDiv.innerHTML = "";
+
+  for (let m of filtered){
 
     const isMe = m.fromId === currentUser.id;
 
@@ -178,8 +185,7 @@ async function loadMessages(){
     const bubble = document.createElement("div");
     bubble.className = "bubble";
 
-    const nome = isMe ? "Você" : user.username;
-    bubble.textContent = `${nome}: ${m.text}`;
+    bubble.textContent = m.text;
 
     if (isMe) {
       msgDiv.appendChild(bubble);
