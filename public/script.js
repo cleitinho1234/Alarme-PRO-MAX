@@ -30,6 +30,7 @@ window.addEventListener("load", async () => {
 
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
+  // 🔥 NOME SALVO
   const savedName = localStorage.getItem("username");
   if(savedName) currentUser.username = savedName;
 
@@ -37,10 +38,15 @@ window.addEventListener("load", async () => {
     document.getElementById("username").value = currentUser.username;
   }
 
-  // 🔥 MOSTRA FOTO NO PERFIL
-  if(currentUser.photo){
-    document.getElementById("profilePreview").src = currentUser.photo;
+  // 🔥 FOTO SALVA (NÃO SOME MAIS)
+  const savedPhoto = localStorage.getItem("photo");
+  if(savedPhoto){
+    currentUser.photo = savedPhoto;
   }
+
+  // 🔥 MOSTRA FOTO
+  document.getElementById("profilePreview").src =
+    currentUser.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
   renderContacts();
 });
@@ -74,20 +80,21 @@ async function salvarPerfil(username, photo){
     body: JSON.stringify({ id: currentUser.id, username, photo })
   });
 
+  // 🔥 SALVA LOCAL (NÃO SOME MAIS)
   localStorage.setItem("username", username);
+  localStorage.setItem("photo", photo);
 
   currentUser.username = username;
   currentUser.photo = photo;
 
-  // 🔥 atualiza na tela
+  // 🔥 ATUALIZA NA HORA
   document.getElementById("profilePreview").src = photo;
 
-  // 🔥 atualiza contatos automaticamente
   renderContacts();
 }
 
 // =========================
-// CONTATOS (AGORA COM FOTO)
+// CONTATOS (COM FOTO)
 async function renderContacts(){
   const div = document.getElementById("contacts");
   div.innerHTML = "";
@@ -102,7 +109,6 @@ async function renderContacts(){
     const el = document.createElement("div");
     el.className = "contact";
 
-    // 🔥 FOTO + NOME
     el.innerHTML = `
       <img src="${user.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
            style="width:30px;height:30px;border-radius:50%;margin-right:10px;">
