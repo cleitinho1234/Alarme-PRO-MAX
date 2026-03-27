@@ -30,7 +30,6 @@ window.addEventListener("load", async () => {
 
   document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-  // 🔥 NOME SALVO
   const savedName = localStorage.getItem("username");
   if(savedName) currentUser.username = savedName;
 
@@ -38,13 +37,13 @@ window.addEventListener("load", async () => {
     document.getElementById("username").value = currentUser.username;
   }
 
-  // 🔥 FOTO SALVA (NÃO SOME MAIS)
+  // 🔥 NOVO: CARREGA FOTO SALVA
   const savedPhoto = localStorage.getItem("photo");
   if(savedPhoto){
     currentUser.photo = savedPhoto;
   }
 
-  // 🔥 MOSTRA FOTO
+  // 🔥 MOSTRA FOTO (COM PADRÃO)
   document.getElementById("profilePreview").src =
     currentUser.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
@@ -80,21 +79,19 @@ async function salvarPerfil(username, photo){
     body: JSON.stringify({ id: currentUser.id, username, photo })
   });
 
-  // 🔥 SALVA LOCAL (NÃO SOME MAIS)
   localStorage.setItem("username", username);
-  localStorage.setItem("photo", photo);
+  localStorage.setItem("photo", photo); // 🔥 NOVO
 
   currentUser.username = username;
   currentUser.photo = photo;
 
-  // 🔥 ATUALIZA NA HORA
   document.getElementById("profilePreview").src = photo;
 
   renderContacts();
 }
 
 // =========================
-// CONTATOS (COM FOTO)
+// CONTATOS (AGORA COM FOTO)
 async function renderContacts(){
   const div = document.getElementById("contacts");
   div.innerHTML = "";
@@ -118,7 +115,6 @@ async function renderContacts(){
     el.style.display = "flex";
     el.style.alignItems = "center";
 
-    // 🔥 REMOVE SELEÇÃO AZUL
     el.style.userSelect = "none";
     el.style.webkitUserSelect = "none";
     el.style.webkitTapHighlightColor = "transparent";
@@ -233,7 +229,7 @@ function addMessage(m, user){
 }
 
 // =========================
-// LOAD MESSAGES (SEM PISCAR)
+// LOAD MESSAGES
 async function loadMessages(initial = false){
 
   if(!currentChat) return;
