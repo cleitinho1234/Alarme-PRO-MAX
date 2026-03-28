@@ -103,7 +103,7 @@ await renderContacts();
 }
 
 // =========================
-// ATUALIZAR CONTATOS (SINCRONIZA NOMES)
+// ATUALIZAR CONTATOS
 
 async function atualizarContatos(){
 
@@ -161,7 +161,7 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 }
 
 // =========================
-// ABRIR CHAT (INSTANTÂNEO)
+// ABRIR CHAT
 
 function abrirChat(user){
 
@@ -178,7 +178,6 @@ document.getElementById("chatScreen").style.display = "flex";
 
 document.getElementById("chatName").textContent = user.username;
 
-// carrega depois
 loadMessages(true);
 
 }
@@ -193,7 +192,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR (INSTANTÂNEO)
+// ENVIAR
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -225,57 +224,45 @@ body: JSON.stringify({
 };
 
 // =========================
-// LOAD MESSAGES
+// LOAD MESSAGES (CORRIGIDO)
 
 async function loadMessages(initial = false){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-let newUnread = {};
-
 for (let m of msgs){
 
-if(m.toId == currentUser.id){
+  if(m.toId == currentUser.id){
 
-  if(currentChat?.id !== m.fromId){
+    if(currentChat?.id !== m.fromId){
 
-    if(!newUnread[m.fromId]){
-      newUnread[m.fromId] = 0;
-    }
+      if(!unreadCounts[m.fromId]){
+        unreadCounts[m.fromId] = 0;
+      }
 
-    newUnread[m.fromId]++;
-  }
+      unreadCounts[m.fromId]++;
 
-}
-
-// auto contato
-if(m.toId == currentUser.id && m.fromId != currentUser.id){
-
-  if(!contacts.some(c => c.id == m.fromId)){
-
-    const resUser = await fetch(`/getUser/${m.fromId}`);
-    const newUser = await resUser.json();
-
-    if(!newUser.error){
-      contacts.unshift(newUser);
     }
 
   }
 
-}
+  // auto contato
+  if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
-}
+    if(!contacts.some(c => c.id == m.fromId)){
 
-// atualiza contador
-for (let userId in newUnread){
-  unreadCounts[userId] = newUnread[userId];
-}
+      const resUser = await fetch(`/getUser/${m.fromId}`);
+      const newUser = await resUser.json();
 
-for (let userId in unreadCounts){
-  if(!newUnread[userId]){
-    unreadCounts[userId] = 0;
+      if(!newUser.error){
+        contacts.unshift(newUser);
+      }
+
+    }
+
   }
+
 }
 
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
@@ -321,4 +308,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-}
+  }
