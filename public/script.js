@@ -2,13 +2,11 @@ let currentUser = null;
 
 let currentChat = null;
 
-let lastMessageId = null;
-
 let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 
-// 🔴 NOVO
+// 🔴 CONTROLE
 let unreadCounts = JSON.parse(localStorage.getItem("unreadCounts")) || {};
-let lastSeenMessages = JSON.parse(localStorage.getItem("lastSeenMessages")) || {};
+let processedMessages = JSON.parse(localStorage.getItem("processedMessages")) || {};
 
 // =========================
 
@@ -19,25 +17,19 @@ window.addEventListener("load", async () => {
 let savedId = localStorage.getItem("userId");
 
 if (savedId) {
-
 const res = await fetch(`/getUser/${savedId}`);
 const user = await res.json();
-
 if (!user.error) currentUser = user;
-
 }
 
 if (!currentUser) {
-
 const res = await fetch("/user", {
   method: "POST",
   headers: {"Content-Type":"application/json"},
   body: JSON.stringify({ username: "Novo Usuário", photo: "" })
 });
-
 currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
-
 }
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
@@ -55,55 +47,12 @@ document.getElementById("profilePreview").src = currentUser.photo;
 
 renderContacts();
 
-});
-
-// =========================
-
-// SALVAR PERFIL
-
-document.getElementById("profileForm").addEventListener("submit", async (e) => {
-
-e.preventDefault();
-
-const username = document.getElementById("username").value;
-const file = document.getElementById("profilePic").files[0];
-
-let photo = currentUser.photo;
-
-if(file){
-const reader = new FileReader();
-
-reader.onload = async () => {
-  photo = reader.result;
-  await salvarPerfil(username, photo);
-}
-
-reader.readAsDataURL(file);
-
-} else {
-await salvarPerfil(username, photo);
-}
+// 🔄 TEMPO REAL
+setInterval(() => {
+loadMessages(false);
+}, 2000);
 
 });
-
-async function salvarPerfil(username, photo){
-
-await fetch("/saveProfile", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify({ id: currentUser.id, username, photo })
-});
-
-localStorage.setItem("username", username);
-
-currentUser.username = username;
-currentUser.photo = photo;
-
-document.getElementById("profilePreview").src = photo;
-
-renderContacts();
-
-}
 
 // =========================
 
@@ -121,25 +70,16 @@ const user = await res.json();
 
 if(!user.error) contacts[i] = user;
 
+const count = unreadCounts[user.id] || 0;
+
 const el = document.createElement("div");
 el.className = "contact";
-
-const count = unreadCounts[user.id] || 0;
 
 el.innerHTML = `
   <img src="${user.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
        style="width:30px;height:30px;border-radius:50%;margin-right:10px;">
-
   <span style="flex:1;">${user.username}</span>
-
-  ${count > 0 ? `<span style="
-    background:red;
-    color:white;
-    border-radius:50%;
-    padding:5px 10px;
-    font-size:12px;
-    margin-left:auto;
-  ">${count}</span>` : ""}
+  ${count > 0 ? `<span style="background:red;color:white;border-radius:50%;padding:5px 10px;font-size:12px;margin-left:auto;">${count}</span>` : ""}
 `;
 
 el.style.display = "flex";
@@ -168,12 +108,9 @@ if(!updatedUser.error) user = updatedUser;
 
 currentChat = user;
 
-// 🔴 ZERAR CONTADOR
+// 🔴 limpar contador
 unreadCounts[user.id] = 0;
-lastSeenMessages[user.id] = Date.now();
-
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
-localStorage.setItem("lastSeenMessages", JSON.stringify(lastSeenMessages));
 
 renderContacts();
 
@@ -181,11 +118,6 @@ document.getElementById("home").style.display = "none";
 document.getElementById("chatScreen").style.display = "flex";
 
 document.getElementById("chatName").textContent = user.username;
-
-document.getElementById("chatAvatar").src =
-user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-lastMessageId = null;
 
 await loadMessages(true);
 
@@ -208,7 +140,6 @@ currentChat = null;
 document.getElementById("sendMessageBtn").onclick = async () => {
 
 const text = document.getElementById("messageText").value;
-
 if(!text || !currentChat) return;
 
 await fetch("/sendMessage", {
@@ -228,14 +159,14 @@ document.getElementById("messageText").value = "";
 
 // =========================
 
-// 🔥 LOAD MESSAGES COMPLETO
+// 🔥 LOAD MESSAGES CORRIGIDO
 
 async function loadMessages(initial = false){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-// 🔥 AUTO CONTATO + CONTADOR
+// 🔥 AUTO CONTATO + CONTADOR (SEM LOOP)
 let updated = false;
 
 for (let m of msgs){
@@ -244,7 +175,6 @@ for (let m of msgs){
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
   if(!contacts.some(c => c.id == m.fromId)){
-
     const resUser = await fetch(`/getUser/${m.fromId}`);
     const newUser = await resUser.json();
 
@@ -252,17 +182,16 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
       contacts.push(newUser);
       updated = true;
     }
-
   }
 
 }
 
-// 🔴 CONTADOR NÃO LIDAS
+// 🔴 contador sem repetir
 if(m.toId == currentUser.id){
 
-  const lastSeen = lastSeenMessages[m.fromId] || 0;
+  if(!processedMessages[m.id]){
 
-  if(m.timestamp && m.timestamp > lastSeen){
+    processedMessages[m.id] = true;
 
     if(currentChat?.id !== m.fromId){
 
@@ -286,6 +215,7 @@ renderContacts();
 }
 
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
+localStorage.setItem("processedMessages", JSON.stringify(processedMessages));
 
 // =========================
 // CHAT
@@ -295,25 +225,55 @@ if(!currentChat) return;
 const filtered = msgs.filter(m =>
 
 (m.fromId == currentUser.id && m.toId == currentChat.id) ||
-
 (m.fromId == currentChat.id && m.toId == currentUser.id)
 
 );
 
 const container = document.getElementById("messages");
 
-if(initial) container.innerHTML = "";
+// 🔥 CARREGAR INSTANTÂNEO
+if(initial){
+
+container.innerHTML = "";
+
+let html = "";
 
 for (let m of filtered){
 
-if(lastMessageId && m.id <= lastMessageId) continue;
+  const isMe = m.fromId == currentUser.id;
 
-const resUser = await fetch(`/getUser/${m.fromId}`);
-const user = await resUser.json();
+  html += `
+    <div class="message ${isMe ? "me" : "other"}">
+      <div class="bubble">${m.text}</div>
+    </div>
+  `;
+}
 
-addMessage(m, user);
+container.innerHTML = html;
+container.scrollTop = container.scrollHeight;
 
-lastMessageId = m.id;
+return;
+}
+
+// 🔥 NOVAS MENSAGENS SEM DUPLICAR
+for (let m of filtered){
+
+if(processedMessages["chat_" + m.id]) continue;
+
+processedMessages["chat_" + m.id] = true;
+
+const isMe = m.fromId == currentUser.id;
+
+const div = document.createElement("div");
+div.className = "message " + (isMe ? "me" : "other");
+
+const bubble = document.createElement("div");
+bubble.className = "bubble";
+bubble.textContent = m.text;
+
+div.appendChild(bubble);
+
+container.appendChild(div);
 
 }
 
@@ -322,39 +282,3 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-
-// MENSAGEM
-
-function addMessage(m, user){
-
-const div = document.createElement("div");
-
-div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
-
-const img = document.createElement("img");
-img.className = "avatar";
-img.src = user?.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-const bubble = document.createElement("div");
-bubble.className = "bubble";
-bubble.textContent = m.text;
-
-if(m.fromId == currentUser.id){
-div.appendChild(bubble);
-div.appendChild(img);
-} else {
-div.appendChild(img);
-div.appendChild(bubble);
-}
-
-document.getElementById("messages").appendChild(div);
-
-}
-
-// =========================
-
-// TEMPO REAL
-
-setInterval(() => {
-loadMessages(false);
-}, 2000);
