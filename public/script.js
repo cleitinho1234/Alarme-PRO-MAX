@@ -30,23 +30,22 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// ID
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// RESTAURA NOME
+// nome
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
 }
 
-// FOTO
+// foto
 if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
 await renderContacts();
 
-// 🔄 tempo real
+// tempo real
 setInterval(loadMessages, 1500);
 
 });
@@ -104,7 +103,7 @@ const updatedUser = await res.json();
 
 currentChat = !updatedUser.error ? updatedUser : user;
 
-// 🔴 MARCAR COMO VISTO
+// 🔴 MARCAR COMO VISTO (SÓ ESSE CHAT)
 const resMsgs = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await resMsgs.json();
 
@@ -114,10 +113,10 @@ for (let m of msgs){
   }
 }
 
-localStorage.setItem("seenMessages", JSON.stringify(seenMessages));
-
-// 🔴 ZERA CONTADOR
+// 🔴 ZERA SÓ ESSE CONTATO
 unreadCounts[currentChat.id] = 0;
+
+localStorage.setItem("seenMessages", JSON.stringify(seenMessages));
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 await renderContacts();
@@ -176,12 +175,11 @@ async function loadMessages(initial = false){
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-// 🔴 CONTADOR CORRETO (COM VISTOS)
 let newUnread = {};
 
+// 🔴 RECONSTRUIR CONTADOR (SEM APAGAR TUDO)
 for (let m of msgs){
 
-// mensagens recebidas
 if(m.toId == currentUser.id){
 
   if(!seenMessages[m.id]){
@@ -213,7 +211,17 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
 }
 
-unreadCounts = newUnread;
+// 🔥 ATUALIZA SEM APAGAR OS OUTROS
+for (let userId in newUnread){
+  unreadCounts[userId] = newUnread[userId];
+}
+
+// 🔥 limpa só quem ficou zerado
+for (let userId in unreadCounts){
+  if(!newUnread[userId]){
+    unreadCounts[userId] = 0;
+  }
+}
 
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 localStorage.setItem("seenMessages", JSON.stringify(seenMessages));
@@ -281,4 +289,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
