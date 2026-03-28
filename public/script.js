@@ -6,6 +6,9 @@ let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 // 🔴 CONTADOR
 let unreadCounts = JSON.parse(localStorage.getItem("unreadCounts")) || {};
 
+// 🧠 CONTROLE DE MENSAGENS JÁ LIDAS
+let lastTimestamp = localStorage.getItem("lastTimestamp") || 0;
+
 // =========================
 // INICIAR
 
@@ -224,7 +227,7 @@ body: JSON.stringify({
 };
 
 // =========================
-// LOAD MESSAGES (CORRIGIDO)
+// LOAD MESSAGES (CORRIGIDO REAL)
 
 async function loadMessages(initial = false){
 
@@ -232,6 +235,14 @@ const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
 for (let m of msgs){
+
+  // 🚫 ignora mensagens já contadas
+  if(m.timestamp <= lastTimestamp) continue;
+
+  // atualiza timestamp
+  if(m.timestamp > lastTimestamp){
+    lastTimestamp = m.timestamp;
+  }
 
   if(m.toId == currentUser.id){
 
@@ -265,6 +276,8 @@ for (let m of msgs){
 
 }
 
+// 💾 salva
+localStorage.setItem("lastTimestamp", lastTimestamp);
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
@@ -308,4 +321,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
