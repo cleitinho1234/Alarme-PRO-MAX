@@ -29,23 +29,19 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// ID
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// RESTAURA NOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
 }
 
-// FOTO
 if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
 await renderContacts();
 
-// 🔄 TEMPO REAL
 setInterval(loadMessages, 1500);
 
 });
@@ -61,12 +57,7 @@ let html = "";
 
 for (let i = 0; i < contacts.length; i++) {
 
-const res = await fetch(`/getUser/${contacts[i].id}`);
-const user = await res.json();
-
-if(!user.error){
-  contacts[i] = user;
-}
+const user = contacts[i]; // 🔥 NÃO espera fetch aqui
 
 const count = unreadCounts[user.id] || 0;
 
@@ -94,30 +85,26 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 }
 
 // =========================
-// ABRIR CHAT
+// ABRIR CHAT (INSTANTÂNEO)
 
-async function abrirChat(user){
+function abrirChat(user){
 
-const res = await fetch(`/getUser/${user.id}`);
-const updatedUser = await res.json();
+currentChat = user;
 
-currentChat = !updatedUser.error ? updatedUser : user;
-
-// 🔴 ZERA CONTADOR SÓ DESSE CONTATO
-unreadCounts[currentChat.id] = 0;
+// 🔴 ZERA CONTADOR
+unreadCounts[user.id] = 0;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
-await renderContacts();
+renderContacts();
 
+// 🔥 MOSTRA NA HORA (SEM esperar)
 document.getElementById("home").style.display = "none";
 document.getElementById("chatScreen").style.display = "flex";
 
-document.getElementById("chatName").textContent = currentChat.username;
+document.getElementById("chatName").textContent = user.username;
 
-await loadMessages(true);
-
-// 🔥 GARANTE ATUALIZAÇÃO CORRETA
-setTimeout(loadMessages, 100);
+// 🔥 carrega mensagens depois (background)
+loadMessages(true);
 
 }
 
@@ -131,15 +118,25 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR
+// ENVIAR (INSTANTÂNEO)
 
-document.getElementById("sendMessageBtn").onclick = async () => {
+document.getElementById("sendMessageBtn").onclick = () => {
 
-const text = document.getElementById("messageText").value;
+const input = document.getElementById("messageText");
+const text = input.value;
+
 if(!text || !currentChat) return;
 
-// envia pro servidor
-await fetch("/sendMessage", {
+input.value = "";
+
+// 🔥 mostra na hora
+addMessage({
+  fromId: currentUser.id,
+  text
+});
+
+// 🔥 envia em background
+fetch("/sendMessage", {
 method: "POST",
 headers: {"Content-Type":"application/json"},
 body: JSON.stringify({
@@ -150,30 +147,20 @@ body: JSON.stringify({
 })
 });
 
-// mostra na hora
-addMessage({
-  fromId: currentUser.id,
-  text
-});
-
-document.getElementById("messageText").value = "";
-
 };
 
 // =========================
-// LOAD MESSAGES (CORRIGIDO)
+// LOAD MESSAGES
 
 async function loadMessages(initial = false){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-// 🔴 RECONSTRUIR CONTADOR
 let newUnread = {};
 
 for (let m of msgs){
 
-// só mensagens recebidas
 if(m.toId == currentUser.id){
 
   if(currentChat?.id !== m.fromId){
@@ -187,7 +174,6 @@ if(m.toId == currentUser.id){
 
 }
 
-// auto contato
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
   if(!contacts.some(c => c.id == m.fromId)){
@@ -210,7 +196,6 @@ for (let userId in newUnread){
   unreadCounts[userId] = newUnread[userId];
 }
 
-// 🔥 ZERA SÓ QUEM NÃO TEM MENSAGEM
 for (let userId in unreadCounts){
   if(!newUnread[userId]){
     unreadCounts[userId] = 0;
@@ -219,7 +204,7 @@ for (let userId in unreadCounts){
 
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
-await renderContacts();
+renderContacts();
 
 // =========================
 // CHAT
@@ -233,28 +218,7 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-if(initial){
-
-let html = "";
-
-for (let m of filtered){
-
-  const isMe = m.fromId == currentUser.id;
-
-  html += `
-    <div class="message ${isMe ? "me" : "other"}">
-      <div class="bubble">${m.text}</div>
-    </div>
-  `;
-}
-
-container.innerHTML = html;
-container.scrollTop = container.scrollHeight;
-
-return;
-}
-
-// atualiza mensagens
+// 🔥 atualiza direto (rápido)
 container.innerHTML = "";
 
 for (let m of filtered){
