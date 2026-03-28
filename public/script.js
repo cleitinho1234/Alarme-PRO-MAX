@@ -31,20 +31,96 @@ localStorage.setItem("userId", currentUser.id);
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
+// 🔥 RESTAURA NOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
+  const input = document.getElementById("username");
+  if(input) input.value = savedName;
 }
 
+// FOTO
 if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
+await atualizarContatos();
 await renderContacts();
 
+// 🔄 tempo real
 setInterval(loadMessages, 1500);
 
 });
+
+// =========================
+// SALVAR PERFIL
+
+document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
+
+e.preventDefault();
+
+const username = document.getElementById("username").value;
+const file = document.getElementById("profilePic").files[0];
+
+let photo = currentUser.photo;
+
+if(file){
+const reader = new FileReader();
+
+reader.onload = async () => {
+  photo = reader.result;
+  await salvarPerfil(username, photo);
+};
+
+reader.readAsDataURL(file);
+
+} else {
+await salvarPerfil(username, photo);
+}
+
+});
+
+async function salvarPerfil(username, photo){
+
+await fetch("/saveProfile", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify({
+  id: currentUser.id,
+  username,
+  photo
+})
+});
+
+localStorage.setItem("username", username);
+
+currentUser.username = username;
+currentUser.photo = photo;
+
+await atualizarContatos();
+await renderContacts();
+
+}
+
+// =========================
+// ATUALIZAR CONTATOS (SINCRONIZA NOMES)
+
+async function atualizarContatos(){
+
+for (let i = 0; i < contacts.length; i++){
+
+  const res = await fetch(`/getUser/${contacts[i].id}`);
+  const user = await res.json();
+
+  if(!user.error){
+    contacts[i] = user;
+  }
+
+}
+
+localStorage.setItem("contacts", JSON.stringify(contacts));
+
+}
 
 // =========================
 // CONTATOS
@@ -57,7 +133,7 @@ let html = "";
 
 for (let i = 0; i < contacts.length; i++) {
 
-const user = contacts[i]; // 🔥 NÃO espera fetch aqui
+const user = contacts[i];
 
 const count = unreadCounts[user.id] || 0;
 
@@ -97,13 +173,12 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
-// 🔥 MOSTRA NA HORA (SEM esperar)
 document.getElementById("home").style.display = "none";
 document.getElementById("chatScreen").style.display = "flex";
 
 document.getElementById("chatName").textContent = user.username;
 
-// 🔥 carrega mensagens depois (background)
+// carrega depois
 loadMessages(true);
 
 }
@@ -129,13 +204,13 @@ if(!text || !currentChat) return;
 
 input.value = "";
 
-// 🔥 mostra na hora
+// mostra na hora
 addMessage({
   fromId: currentUser.id,
   text
 });
 
-// 🔥 envia em background
+// envia em background
 fetch("/sendMessage", {
 method: "POST",
 headers: {"Content-Type":"application/json"},
@@ -174,6 +249,7 @@ if(m.toId == currentUser.id){
 
 }
 
+// auto contato
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
   if(!contacts.some(c => c.id == m.fromId)){
@@ -191,7 +267,7 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
 }
 
-// 🔥 ATUALIZA SEM QUEBRAR
+// atualiza contador
 for (let userId in newUnread){
   unreadCounts[userId] = newUnread[userId];
 }
@@ -218,7 +294,6 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// 🔥 atualiza direto (rápido)
 container.innerHTML = "";
 
 for (let m of filtered){
