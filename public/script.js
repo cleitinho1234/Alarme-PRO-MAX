@@ -4,6 +4,7 @@ let lastMessageId = null;
 
 const contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 let newUsers = JSON.parse(localStorage.getItem("newUsers")) || [];
+let seenMessages = JSON.parse(localStorage.getItem("seenMessages")) || {};
 
 // =========================
 // INICIAR
@@ -142,7 +143,20 @@ async function abrirChat(user){
   document.getElementById("chatAvatar").src =
     user.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-  // remove bolinha
+  // 🔥 marcar como visto
+  const resMsgs = await fetch(`/getMessages/${currentUser.id}`);
+  const msgs = await resMsgs.json();
+
+  const lastMsg = msgs
+    .filter(m => m.fromId == user.id && m.toId == currentUser.id)
+    .pop();
+
+  if(lastMsg){
+    seenMessages[user.id] = lastMsg.id;
+    localStorage.setItem("seenMessages", JSON.stringify(seenMessages));
+  }
+
+  // remover bolinha
   newUsers = newUsers.filter(id => id != user.id);
   localStorage.setItem("newUsers", JSON.stringify(newUsers));
 
@@ -243,7 +257,7 @@ async function loadMessages(initial = false){
 
     if(m.toId == currentUser.id){
 
-      // adiciona contato automaticamente
+      // adicionar contato automático
       if(!contacts.some(c => c.id == m.fromId)){
 
         const resUser = await fetch(`/getUser/${m.fromId}`);
@@ -256,20 +270,25 @@ async function loadMessages(initial = false){
         }
       }
 
-      // marca bolinha
-      if(!currentChat || currentChat.id !== m.fromId){
+      const lastSeen = seenMessages[m.fromId] || 0;
 
-        if(!newUsers.includes(m.fromId)){
-          newUsers.push(m.fromId);
-          localStorage.setItem("newUsers", JSON.stringify(newUsers));
-          atualizou = true;
+      // 🔥 só marca se for nova mesmo
+      if(m.id > lastSeen){
+
+        if(!currentChat || currentChat.id !== m.fromId){
+
+          if(!newUsers.includes(m.fromId)){
+            newUsers.push(m.fromId);
+            localStorage.setItem("newUsers", JSON.stringify(newUsers));
+            atualizou = true;
+          }
+
         }
 
       }
     }
   }
 
-  // 🔥 renderiza UMA VEZ só
   if(atualizou){
     renderContacts();
   }
