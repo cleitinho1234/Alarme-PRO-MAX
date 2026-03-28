@@ -52,7 +52,7 @@ body {
   height: 40px;
   border-radius: 50%;
   margin-right: 10px;
-  object-fit: cover; /* 🔥 imagem bonita */
+  object-fit: cover;
 }
 
 /* CHAT */
@@ -87,7 +87,6 @@ body {
   border-radius: 8px;
   cursor: pointer;
 
-  /* 🔥 REMOVE SELEÇÃO AZUL */
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -112,7 +111,7 @@ body {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  object-fit: cover; /* 🔥 foto redonda perfeita */
+  object-fit: cover;
 }
 
 .bubble {
@@ -120,7 +119,7 @@ body {
   border-radius: 10px;
   max-width: 70%;
   margin: 5px;
-  word-break: break-word; /* 🔥 evita quebrar layout */
+  word-break: break-word;
 }
 
 .me .bubble {
@@ -141,7 +140,7 @@ body {
 
 <form id="profileForm">
   <input type="text" id="username" placeholder="Seu nome">
-  <input type="file" id="profilePic" accept="image/*"> <!-- 🔥 só imagem -->
+  <input type="file" id="profilePic" accept="image/*">
   <button>Salvar</button>
 </form>
 
@@ -175,6 +174,9 @@ body {
 </div>
 
 </div>
+
+<!-- 🔥 ADICIONADO AQUI -->
+<script src="/socket.io/socket.io.js"></script>
 
 <script src="script.js"></script>
 
