@@ -3,10 +3,8 @@ let currentChat = null;
 
 let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 
-// 🔴 CONTROLES
+// 🔴 CONTADOR
 let unreadCounts = JSON.parse(localStorage.getItem("unreadCounts")) || {};
-let processedMessages = JSON.parse(localStorage.getItem("processedMessages")) || {};
-let countedMessages = JSON.parse(localStorage.getItem("countedMessages")) || {};
 
 // =========================
 // INICIAR
@@ -31,73 +29,26 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
+// ID
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// 🔥 RESTAURA NOME
+// RESTAURA NOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
-  const input = document.getElementById("username");
-  if(input) input.value = savedName;
 }
 
 // FOTO
 if(currentUser.photo){
-  const img = document.getElementById("profilePreview");
-  if(img) img.src = currentUser.photo;
+  document.getElementById("profilePreview").src = currentUser.photo;
 }
 
 await renderContacts();
 
-// 🔄 tempo real
+// 🔄 TEMPO REAL
 setInterval(loadMessages, 1500);
 
 });
-
-// =========================
-// SALVAR PERFIL
-
-document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
-
-e.preventDefault();
-
-const username = document.getElementById("username").value;
-const file = document.getElementById("profilePic").files[0];
-
-let photo = currentUser.photo;
-
-if(file){
-const reader = new FileReader();
-
-reader.onload = async () => {
-  photo = reader.result;
-  await salvarPerfil(username, photo);
-};
-
-reader.readAsDataURL(file);
-
-} else {
-await salvarPerfil(username, photo);
-}
-
-});
-
-async function salvarPerfil(username, photo){
-
-await fetch("/saveProfile", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify({ id: currentUser.id, username, photo })
-});
-
-localStorage.setItem("username", username);
-
-currentUser.username = username;
-currentUser.photo = photo;
-
-await renderContacts();
-
-}
 
 // =========================
 // CONTATOS
@@ -177,15 +128,15 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR (COM ID DO SERVIDOR)
+// ENVIAR
 
 document.getElementById("sendMessageBtn").onclick = async () => {
 
 const text = document.getElementById("messageText").value;
 if(!text || !currentChat) return;
 
-// 🔥 envia SEM ID
-const res = await fetch("/sendMessage", {
+// envia pro servidor
+await fetch("/sendMessage", {
 method: "POST",
 headers: {"Content-Type":"application/json"},
 body: JSON.stringify({
@@ -196,37 +147,42 @@ body: JSON.stringify({
 })
 });
 
-// 🔥 recebe com ID correto
-const savedMessage = await res.json();
-
-// 🔥 mostra na hora
-addMessage(savedMessage);
+// mostra na hora
+addMessage({
+  fromId: currentUser.id,
+  text
+});
 
 document.getElementById("messageText").value = "";
 
 };
 
 // =========================
-// LOAD MESSAGES
+// LOAD MESSAGES (CONTADOR CORRETO)
 
 async function loadMessages(initial = false){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-let updatedContacts = false;
-let updatedUnread = false;
-
-// 🔄 atualiza nomes
-for (let i = 0; i < contacts.length; i++) {
-  const resUser = await fetch(`/getUser/${contacts[i].id}`);
-  const updated = await resUser.json();
-  if(!updated.error){
-    contacts[i] = updated;
-  }
-}
+// 🔴 RECONSTRUIR CONTADOR DO ZERO
+let newUnread = {};
 
 for (let m of msgs){
+
+// só mensagens que EU RECEBI
+if(m.toId == currentUser.id){
+
+  if(currentChat?.id !== m.fromId){
+
+    if(!newUnread[m.fromId]){
+      newUnread[m.fromId] = 0;
+    }
+
+    newUnread[m.fromId]++;
+  }
+
+}
 
 // auto contato
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
@@ -238,29 +194,6 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
     if(!newUser.error){
       contacts.unshift(newUser);
-      updatedContacts = true;
-    }
-
-  }
-
-}
-
-// 🔴 CONTADOR CORRETO
-if(m.toId == currentUser.id){
-
-  if(!countedMessages[m.id]){
-
-    countedMessages[m.id] = true;
-
-    if(currentChat?.id !== m.fromId){
-
-      if(!unreadCounts[m.fromId]){
-        unreadCounts[m.fromId] = 0;
-      }
-
-      unreadCounts[m.fromId]++;
-      updatedUnread = true;
-
     }
 
   }
@@ -269,17 +202,10 @@ if(m.toId == currentUser.id){
 
 }
 
-if(updatedContacts || updatedUnread){
-
-localStorage.setItem("contacts", JSON.stringify(contacts));
+unreadCounts = newUnread;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 await renderContacts();
-
-}
-
-localStorage.setItem("countedMessages", JSON.stringify(countedMessages));
-localStorage.setItem("processedMessages", JSON.stringify(processedMessages));
 
 // =========================
 // CHAT
@@ -293,7 +219,6 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// 🔥 INSTANTÂNEO
 if(initial){
 
 let html = "";
@@ -315,12 +240,10 @@ container.scrollTop = container.scrollHeight;
 return;
 }
 
-// 🔥 NOVAS
+// novas mensagens
+container.innerHTML = "";
+
 for (let m of filtered){
-
-if(processedMessages["chat_" + m.id]) continue;
-
-processedMessages["chat_" + m.id] = true;
 
 addMessage(m);
 
@@ -331,7 +254,7 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-// ADICIONAR MENSAGEM
+// MENSAGEM
 
 function addMessage(m){
 
