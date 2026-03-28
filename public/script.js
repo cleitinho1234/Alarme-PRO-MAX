@@ -1,5 +1,4 @@
 let currentUser = null;
-
 let currentChat = null;
 
 let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
@@ -92,7 +91,7 @@ async function abrirChat(user){
 
 currentChat = user;
 
-// 🔴 ZERA CONTADOR
+// 🔴 ZERAR CONTADOR
 unreadCounts[user.id] = 0;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
@@ -119,22 +118,30 @@ currentChat = null;
 
 // =========================
 
-// ENVIAR
+// ENVIAR (🔥 CORRIGIDO)
 
 document.getElementById("sendMessageBtn").onclick = async () => {
 
 const text = document.getElementById("messageText").value;
 if(!text || !currentChat) return;
 
-await fetch("/sendMessage", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify({
+// 🔥 cria mensagem local
+const message = {
+  id: Date.now(),
   fromId: currentUser.id,
   toId: currentChat.id,
   text,
   timestamp: Date.now()
-})
+};
+
+// 🔥 mostra na hora
+addMessage(message, currentUser);
+
+// 🔥 envia pro servidor
+await fetch("/sendMessage", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify(message)
 });
 
 document.getElementById("messageText").value = "";
@@ -153,7 +160,6 @@ const msgs = await res.json();
 let updatedContacts = false;
 let updatedUnread = false;
 
-// 🔥 PROCESSAR TODAS AS MENSAGENS
 for (let m of msgs){
 
 // 📩 AUTO CONTATO
@@ -171,7 +177,7 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
 }
 
-// 🔴 CONTADOR (SEM REPETIR)
+// 🔴 CONTADOR
 if(m.toId == currentUser.id){
 
   if(!processedMessages[m.id]){
@@ -195,15 +201,13 @@ if(m.toId == currentUser.id){
 
 }
 
-// 🔄 ATUALIZA CONTATOS
 if(updatedContacts){
 localStorage.setItem("contacts", JSON.stringify(contacts));
 }
 
-// 🔄 ATUALIZA CONTADOR EM TEMPO REAL
 if(updatedUnread){
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
-renderContacts(); // 🔥 ESSA LINHA RESOLVE TUDO
+renderContacts(); // 🔥 atualiza na hora
 }
 
 localStorage.setItem("processedMessages", JSON.stringify(processedMessages));
@@ -220,28 +224,20 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// 🔥 CARREGA TUDO NA HORA
+// 🔥 CARREGA INSTANTÂNEO
 if(initial){
 
 container.innerHTML = "";
 
 for (let m of filtered){
 
-  const isMe = m.fromId == currentUser.id;
+  const resUser = await fetch(`/getUser/${m.fromId}`);
+  const user = await resUser.json();
 
-  const div = document.createElement("div");
-  div.className = "message " + (isMe ? "me" : "other");
-
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.textContent = m.text;
-
-  div.appendChild(bubble);
-  container.appendChild(div);
+  addMessage(m, user);
 }
 
 container.scrollTop = container.scrollHeight;
-
 return;
 }
 
@@ -252,17 +248,10 @@ if(processedMessages["chat_" + m.id]) continue;
 
 processedMessages["chat_" + m.id] = true;
 
-const isMe = m.fromId == currentUser.id;
+const resUser = await fetch(`/getUser/${m.fromId}`);
+const user = await resUser.json();
 
-const div = document.createElement("div");
-div.className = "message " + (isMe ? "me" : "other");
-
-const bubble = document.createElement("div");
-bubble.className = "bubble";
-bubble.textContent = m.text;
-
-div.appendChild(bubble);
-container.appendChild(div);
+addMessage(m, user);
 
 }
 
@@ -271,3 +260,21 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
+
+// MENSAGEM
+
+function addMessage(m, user){
+
+const div = document.createElement("div");
+
+div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
+
+const bubble = document.createElement("div");
+bubble.className = "bubble";
+bubble.textContent = m.text;
+
+div.appendChild(bubble);
+
+document.getElementById("messages").appendChild(div);
+
+  }
