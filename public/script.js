@@ -348,4 +348,4 @@ async function loadMessages(initial = false){
 
     container.scrollTop = container.scrollHeight;
   }
-    }
+      }
