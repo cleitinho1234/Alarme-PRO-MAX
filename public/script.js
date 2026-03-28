@@ -321,4 +321,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-}
+    }
