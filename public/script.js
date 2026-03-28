@@ -31,10 +31,9 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// ID
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// 🔥 RESTAURA NOME LOCAL
+// 🔥 RESTAURA NOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
@@ -56,7 +55,7 @@ setInterval(loadMessages, 1500);
 });
 
 // =========================
-// SALVAR PERFIL (ATUALIZA GLOBAL)
+// SALVAR PERFIL
 
 document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
 
@@ -91,7 +90,6 @@ headers: {"Content-Type":"application/json"},
 body: JSON.stringify({ id: currentUser.id, username, photo })
 });
 
-// salva local
 localStorage.setItem("username", username);
 
 currentUser.username = username;
@@ -102,7 +100,7 @@ await renderContacts();
 }
 
 // =========================
-// CONTATOS (ATUALIZA DO SERVIDOR)
+// CONTATOS
 
 async function renderContacts(){
 
@@ -112,7 +110,6 @@ let html = "";
 
 for (let i = 0; i < contacts.length; i++) {
 
-// 🔥 BUSCA ATUALIZADO
 const res = await fetch(`/getUser/${contacts[i].id}`);
 const user = await res.json();
 
@@ -150,17 +147,12 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 
 async function abrirChat(user){
 
-// 🔥 pega atualizado
 const res = await fetch(`/getUser/${user.id}`);
 const updatedUser = await res.json();
 
-if(!updatedUser.error){
-  currentChat = updatedUser;
-} else {
-  currentChat = user;
-}
+currentChat = !updatedUser.error ? updatedUser : user;
 
-// zerar contador
+// 🔴 ZERA CONTADOR
 unreadCounts[currentChat.id] = 0;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
@@ -185,29 +177,30 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR
+// ENVIAR (COM ID DO SERVIDOR)
 
 document.getElementById("sendMessageBtn").onclick = async () => {
 
 const text = document.getElementById("messageText").value;
 if(!text || !currentChat) return;
 
-const message = {
-  id: Date.now(),
+// 🔥 envia SEM ID
+const res = await fetch("/sendMessage", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify({
   fromId: currentUser.id,
   toId: currentChat.id,
   text,
   timestamp: Date.now()
-};
-
-addMessage(message);
-
-// envia
-await fetch("/sendMessage", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify(message)
+})
 });
+
+// 🔥 recebe com ID correto
+const savedMessage = await res.json();
+
+// 🔥 mostra na hora
+addMessage(savedMessage);
 
 document.getElementById("messageText").value = "";
 
@@ -224,7 +217,7 @@ const msgs = await res.json();
 let updatedContacts = false;
 let updatedUnread = false;
 
-// 🔄 atualiza nomes sempre
+// 🔄 atualiza nomes
 for (let i = 0; i < contacts.length; i++) {
   const resUser = await fetch(`/getUser/${contacts[i].id}`);
   const updated = await resUser.json();
@@ -252,7 +245,7 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
 }
 
-// contador
+// 🔴 CONTADOR CORRETO
 if(m.toId == currentUser.id){
 
   if(!countedMessages[m.id]){
@@ -300,7 +293,7 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// instantâneo
+// 🔥 INSTANTÂNEO
 if(initial){
 
 let html = "";
@@ -322,7 +315,7 @@ container.scrollTop = container.scrollHeight;
 return;
 }
 
-// novas
+// 🔥 NOVAS
 for (let m of filtered){
 
 if(processedMessages["chat_" + m.id]) continue;
@@ -338,7 +331,7 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-// MENSAGEM
+// ADICIONAR MENSAGEM
 
 function addMessage(m){
 
@@ -354,4 +347,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
