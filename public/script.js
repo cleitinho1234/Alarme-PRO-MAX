@@ -34,23 +34,12 @@ localStorage.setItem("userId", currentUser.id);
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-const savedName = localStorage.getItem("username");
-if(savedName) currentUser.username = savedName;
-
-if(currentUser.username){
-document.getElementById("username").value = currentUser.username;
-}
-
-if(currentUser.photo){
-document.getElementById("profilePreview").src = currentUser.photo;
-}
-
 renderContacts();
 
 // 🔄 TEMPO REAL
 setInterval(() => {
 loadMessages(false);
-}, 2000);
+}, 1500);
 
 });
 
@@ -101,14 +90,9 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 
 async function abrirChat(user){
 
-const res = await fetch(`/getUser/${user.id}`);
-const updatedUser = await res.json();
-
-if(!updatedUser.error) user = updatedUser;
-
 currentChat = user;
 
-// 🔴 limpar contador
+// 🔴 ZERA CONTADOR
 unreadCounts[user.id] = 0;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
@@ -159,19 +143,20 @@ document.getElementById("messageText").value = "";
 
 // =========================
 
-// 🔥 LOAD MESSAGES CORRIGIDO
+// 🔥 LOAD MESSAGES FINAL
 
 async function loadMessages(initial = false){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const msgs = await res.json();
 
-// 🔥 AUTO CONTATO + CONTADOR (SEM LOOP)
-let updated = false;
+let updatedContacts = false;
+let updatedUnread = false;
 
+// 🔥 PROCESSAR TODAS AS MENSAGENS
 for (let m of msgs){
 
-// auto contato
+// 📩 AUTO CONTATO
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
   if(!contacts.some(c => c.id == m.fromId)){
@@ -180,13 +165,13 @@ if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
     if(!newUser.error){
       contacts.push(newUser);
-      updated = true;
+      updatedContacts = true;
     }
   }
 
 }
 
-// 🔴 contador sem repetir
+// 🔴 CONTADOR (SEM REPETIR)
 if(m.toId == currentUser.id){
 
   if(!processedMessages[m.id]){
@@ -200,6 +185,7 @@ if(m.toId == currentUser.id){
       }
 
       unreadCounts[m.fromId]++;
+      updatedUnread = true;
 
     }
 
@@ -209,12 +195,17 @@ if(m.toId == currentUser.id){
 
 }
 
-if(updated){
+// 🔄 ATUALIZA CONTATOS
+if(updatedContacts){
 localStorage.setItem("contacts", JSON.stringify(contacts));
-renderContacts();
 }
 
+// 🔄 ATUALIZA CONTADOR EM TEMPO REAL
+if(updatedUnread){
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
+renderContacts(); // 🔥 ESSA LINHA RESOLVE TUDO
+}
+
 localStorage.setItem("processedMessages", JSON.stringify(processedMessages));
 
 // =========================
@@ -223,39 +214,38 @@ localStorage.setItem("processedMessages", JSON.stringify(processedMessages));
 if(!currentChat) return;
 
 const filtered = msgs.filter(m =>
-
 (m.fromId == currentUser.id && m.toId == currentChat.id) ||
 (m.fromId == currentChat.id && m.toId == currentUser.id)
-
 );
 
 const container = document.getElementById("messages");
 
-// 🔥 CARREGAR INSTANTÂNEO
+// 🔥 CARREGA TUDO NA HORA
 if(initial){
 
 container.innerHTML = "";
-
-let html = "";
 
 for (let m of filtered){
 
   const isMe = m.fromId == currentUser.id;
 
-  html += `
-    <div class="message ${isMe ? "me" : "other"}">
-      <div class="bubble">${m.text}</div>
-    </div>
-  `;
+  const div = document.createElement("div");
+  div.className = "message " + (isMe ? "me" : "other");
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = m.text;
+
+  div.appendChild(bubble);
+  container.appendChild(div);
 }
 
-container.innerHTML = html;
 container.scrollTop = container.scrollHeight;
 
 return;
 }
 
-// 🔥 NOVAS MENSAGENS SEM DUPLICAR
+// 🔥 NOVAS MENSAGENS
 for (let m of filtered){
 
 if(processedMessages["chat_" + m.id]) continue;
@@ -272,7 +262,6 @@ bubble.className = "bubble";
 bubble.textContent = m.text;
 
 div.appendChild(bubble);
-
 container.appendChild(div);
 
 }
