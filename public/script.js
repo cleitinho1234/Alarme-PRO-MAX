@@ -239,7 +239,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 GRAVAÇÃO (FIX BUG)
+// 🎤 GRAVAÇÃO FINAL (SEM BUG)
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -258,41 +258,6 @@ mediaRecorder.ondataavailable = e => {
   }
 };
 
-mediaRecorder.onstop = () => {
-
-if(audioChunks.length === 0) return;
-
-const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-if(blob.size === 0) return;
-
-const reader = new FileReader();
-
-reader.onloadend = () => {
-
-  if(!reader.result) return;
-
-  const msg = {
-    fromId: currentUser.id,
-    toId: currentChat.id,
-    audio: reader.result,
-    timestamp: Date.now()
-  };
-
-  addMessage(msg);
-
-  fetch("/sendMessage", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(msg)
-  });
-
-};
-
-reader.readAsDataURL(blob);
-
-};
-
 mediaRecorder.start();
 isRecording = true;
 recordBtn.textContent = "⏺️";
@@ -303,13 +268,58 @@ recordBtn.onmouseup = () => {
 
 if(!mediaRecorder || !isRecording) return;
 
-// evita bug de clique rápido
-setTimeout(() => {
-  mediaRecorder.stop();
-}, 200);
+// força capturar áudio mesmo rápido
+mediaRecorder.requestData();
 
-isRecording = false;
-recordBtn.textContent = "🎤";
+setTimeout(() => {
+
+  mediaRecorder.stop();
+
+  if(audioChunks.length === 0){
+    console.log("⚠️ áudio ignorado");
+    isRecording = false;
+    recordBtn.textContent = "🎤";
+    return;
+  }
+
+  const blob = new Blob(audioChunks, { type: "audio/webm" });
+
+  if(blob.size < 1000){
+    console.log("⚠️ áudio muito curto");
+    isRecording = false;
+    recordBtn.textContent = "🎤";
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onloadend = () => {
+
+    if(!reader.result) return;
+
+    const msg = {
+      fromId: currentUser.id,
+      toId: currentChat.id,
+      audio: reader.result,
+      timestamp: Date.now()
+    };
+
+    addMessage(msg);
+
+    fetch("/sendMessage", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(msg)
+    });
+
+  };
+
+  reader.readAsDataURL(blob);
+
+  isRecording = false;
+  recordBtn.textContent = "🎤";
+
+}, 250);
 
 };
 
@@ -380,7 +390,7 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-// MENSAGEM (COM ÁUDIO)
+// MENSAGEM
 
 function addMessage(m){
 
@@ -399,7 +409,7 @@ if(m.text){
   bubble.appendChild(text);
 }
 
-// 🎤 ÁUDIO
+// ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
