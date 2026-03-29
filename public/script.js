@@ -223,102 +223,75 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// ÁUDIO (PC + CELULAR)
+// 🎤 ÁUDIO (FUNCIONA NO CELULAR)
 
 const recordBtn = document.getElementById("recordBtn");
 
-async function startRecording(){
+recordBtn.onclick = async () => {
 
-if(isRecording) return;
+if(!currentChat) return;
 
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+// 👉 INICIAR GRAVAÇÃO
+if(!isRecording){
 
-mediaRecorder = new MediaRecorder(stream);
-audioChunks = [];
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-mediaRecorder.ondataavailable = e => {
-  if(e.data.size > 0){
-    audioChunks.push(e.data);
-  }
-};
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
 
-mediaRecorder.start();
-isRecording = true;
-
-recordBtn.textContent = "⏺️";
-
-}
-
-function stopRecording(){
-
-if(!mediaRecorder || !isRecording) return;
-
-mediaRecorder.stop();
-
-mediaRecorder.onstop = () => {
-
-  if(audioChunks.length === 0){
-    isRecording = false;
-    recordBtn.textContent = "🎤";
-    return;
-  }
-
-  const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-  if(blob.size < 300){
-    isRecording = false;
-    recordBtn.textContent = "🎤";
-    return;
-  }
-
-  const reader = new FileReader();
-
-  reader.onloadend = () => {
-
-    if(!reader.result){
-      isRecording = false;
-      recordBtn.textContent = "🎤";
-      return;
+  mediaRecorder.ondataavailable = e => {
+    if(e.data.size > 0){
+      audioChunks.push(e.data);
     }
+  };
 
-    const msg = {
-      fromId: currentUser.id,
-      toId: currentChat.id,
-      audio: reader.result,
-      timestamp: Date.now()
+  mediaRecorder.onstop = () => {
+
+    const blob = new Blob(audioChunks, { type: "audio/webm" });
+
+    if(blob.size < 1000) return;
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+
+      const msg = {
+        fromId: currentUser.id,
+        toId: currentChat.id,
+        audio: reader.result,
+        timestamp: Date.now()
+      };
+
+      addMessage(msg);
+      saveLocalMessage(msg);
+
+      fetch("/sendMessage", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(msg)
+      });
+
     };
 
-    addMessage(msg);
-    saveLocalMessage(msg);
-
-    fetch("/sendMessage", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(msg)
-    });
-
-    isRecording = false;
-    recordBtn.textContent = "🎤";
+    reader.readAsDataURL(blob);
 
   };
 
-  reader.readAsDataURL(blob);
+  mediaRecorder.start();
+  isRecording = true;
+  recordBtn.textContent = "⏺️";
 
-};
+}
 
-// PC
-recordBtn.onmousedown = startRecording;
-recordBtn.onmouseup = stopRecording;
+// 👉 PARAR E ENVIAR
+else{
 
-// CELULAR
-recordBtn.ontouchstart = (e) => {
-  e.preventDefault();
-  startRecording();
-};
+  mediaRecorder.stop();
+  isRecording = false;
+  recordBtn.textContent = "🎤";
 
-recordBtn.ontouchend = (e) => {
-  e.preventDefault();
-  stopRecording();
+}
+
 };
 
 // =========================
@@ -411,7 +384,7 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
-// ÁUDIO
+// 🎧 ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
@@ -455,4 +428,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
