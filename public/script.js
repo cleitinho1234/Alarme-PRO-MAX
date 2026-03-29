@@ -10,7 +10,7 @@ let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 
-// 🧠 CACHE LOCAL (SEGURA ÁUDIO MESMO SE BACKEND FALHAR)
+// 💾 CACHE LOCAL (IMPOSSÍVEL PERDER ÁUDIO)
 let localMessages = JSON.parse(localStorage.getItem("localMessages")) || [];
 
 // =========================
@@ -39,6 +39,7 @@ if (!currentUser) {
   localStorage.setItem("userId", currentUser.id);
 }
 
+// 🔥 NOME NUNCA SOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
@@ -131,7 +132,7 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 
 }
 
-async function renderContacts(){
+function renderContacts(){
 
 const div = document.getElementById("contacts");
 
@@ -220,7 +221,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 ÁUDIO (FIX TOTAL)
+// 🎤 ÁUDIO
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -303,14 +304,14 @@ localStorage.setItem("localMessages", JSON.stringify(localMessages));
 }
 
 // =========================
-// LOAD MESSAGES (🔥 CORRIGIDO)
+// LOAD MESSAGES
 
 async function loadMessages(){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const serverMsgs = await res.json();
 
-// 🔥 junta servidor + local (NUNCA PERDE ÁUDIO)
+// 🔥 JUNTA TUDO (NUNCA PERDE ÁUDIO)
 const msgs = [...serverMsgs, ...localMessages];
 
 for (let m of msgs){
@@ -364,6 +365,16 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
+// ⏱ FORMATAR TEMPO
+
+function formatTime(seconds){
+if(!seconds || isNaN(seconds)) return "0:00";
+const m = Math.floor(seconds / 60);
+const s = Math.floor(seconds % 60);
+return `${m}:${String(s).padStart(2,"0")}`;
+}
+
+// =========================
 // MENSAGEM
 
 function addMessage(m){
@@ -376,13 +387,24 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
-// 🎤 ÁUDIO PRIORIDADE
+// 🎤 ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
   audio.src = m.audio;
   audio.style.display = "block";
+
+  const duration = document.createElement("div");
+  duration.style.fontSize = "10px";
+  duration.style.opacity = "0.6";
+  duration.textContent = "Carregando...";
+
+  audio.onloadedmetadata = () => {
+    duration.textContent = formatTime(audio.duration);
+  };
+
   bubble.appendChild(audio);
+  bubble.appendChild(duration);
 }
 
 // TEXTO
@@ -410,4 +432,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-}
+                          }
