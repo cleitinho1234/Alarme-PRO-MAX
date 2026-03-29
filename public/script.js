@@ -13,6 +13,9 @@ let isRecording = false;
 // 💾 CACHE LOCAL
 let localMessages = JSON.parse(localStorage.getItem("localMessages")) || [];
 
+// 🔥 CONTROLE (não duplicar e não recriar áudio)
+let renderedIds = new Set();
+
 // =========================
 // INICIAR
 
@@ -39,7 +42,6 @@ if (!currentUser) {
   localStorage.setItem("userId", currentUser.id);
 }
 
-// nome fixo
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
@@ -60,9 +62,10 @@ setInterval(loadMessages, 1500);
 });
 
 // =========================
-// PERFIL (mantido igual)
+// PERFIL
 
 document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
+
 e.preventDefault();
 
 const username = document.getElementById("username").value;
@@ -80,6 +83,7 @@ if(file){
 } else {
   await salvarPerfil(username, photo);
 }
+
 });
 
 async function salvarPerfil(username, photo){
@@ -109,12 +113,14 @@ fetch("/saveProfile", {
     photo
   })
 });
+
 }
 
 // =========================
-// CONTATOS (SEM ALTERAÇÃO)
+// CONTATOS
 
 async function atualizarContatos(){
+
 for (let i = 0; i < contacts.length; i++){
   const res = await fetch(`/getUser/${contacts[i].id}`);
   const user = await res.json();
@@ -123,7 +129,9 @@ for (let i = 0; i < contacts.length; i++){
     contacts[i] = user;
   }
 }
+
 localStorage.setItem("contacts", JSON.stringify(contacts));
+
 }
 
 function renderContacts(){
@@ -170,6 +178,7 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 renderContacts();
 
 document.getElementById("messages").innerHTML = "";
+renderedIds.clear(); // 🔥 importante
 
 document.getElementById("home").style.display = "none";
 document.getElementById("chatScreen").style.display = "flex";
@@ -187,7 +196,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR TEXTO (FIX DUPLICAÇÃO)
+// ENVIAR TEXTO
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -199,6 +208,7 @@ if(!text || !currentChat) return;
 input.value = "";
 
 const msg = {
+  id: Date.now() + Math.random(),
   fromId: currentUser.id,
   toId: currentChat.id,
   text,
@@ -217,7 +227,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 ÁUDIO (MOBILE FIX)
+// 🎤 ÁUDIO (CELULAR OK)
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -249,6 +259,7 @@ if(!isRecording){
     reader.onloadend = () => {
 
       const msg = {
+        id: Date.now() + Math.random(),
         fromId: currentUser.id,
         toId: currentChat.id,
         audio: reader.result,
@@ -293,7 +304,7 @@ localStorage.setItem("localMessages", JSON.stringify(localMessages));
 }
 
 // =========================
-// LOAD MESSAGES (SEM BUG)
+// LOAD MESSAGES (FINAL)
 
 async function loadMessages(){
 
@@ -304,12 +315,19 @@ const msgs = [...serverMsgs, ...localMessages];
 
 msgs.sort((a,b)=>a.timestamp - b.timestamp);
 
-const container = document.getElementById("messages");
-container.innerHTML = "";
-
 for (let m of msgs){
 
-// contatos topo + contador
+// ❌ ignora mensagem bugada
+if(!m.text && !m.audio) continue;
+
+const id = m.id || (m.fromId + "_" + m.timestamp);
+
+// ❌ não renderiza de novo
+if(renderedIds.has(id)) continue;
+
+renderedIds.add(id);
+
+// 🔥 contatos topo
 if(m.toId == currentUser.id){
 
   const index = contacts.findIndex(c => c.id == m.fromId);
@@ -325,7 +343,7 @@ if(m.toId == currentUser.id){
 
 }
 
-// mostrar no chat
+// 🔥 render no chat
 if(currentChat &&
 ((m.fromId == currentUser.id && m.toId == currentChat.id) ||
  (m.fromId == currentChat.id && m.toId == currentUser.id))){
@@ -338,6 +356,7 @@ if(currentChat &&
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 renderContacts();
 
+const container = document.getElementById("messages");
 container.scrollTop = container.scrollHeight;
 
 }
@@ -408,4 +427,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-}
+  }
