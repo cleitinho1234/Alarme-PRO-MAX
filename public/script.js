@@ -9,6 +9,7 @@ let lastTimestamp = Number(localStorage.getItem("lastTimestamp")) || 0;
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
+let recordedAudio = null;
 
 // 💾 CACHE LOCAL
 let localMessages = JSON.parse(localStorage.getItem("localMessages")) || [];
@@ -23,10 +24,7 @@ let savedId = localStorage.getItem("userId");
 if (savedId) {
   const res = await fetch(`/getUser/${savedId}`);
   const user = await res.json();
-
-  if (!user.error && user.username) {
-    currentUser = user;
-  }
+  if (!user.error && user.username) currentUser = user;
 }
 
 if (!currentUser) {
@@ -41,9 +39,7 @@ if (!currentUser) {
 
 // nome fixo
 const savedName = localStorage.getItem("username");
-if(savedName){
-  currentUser.username = savedName;
-}
+if(savedName) currentUser.username = savedName;
 
 document.getElementById("username").value = currentUser.username || "";
 document.getElementById("userIdDisplay").textContent = currentUser.id;
@@ -175,7 +171,7 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
-// 🔥 limpa só ao abrir
+// limpa chat só ao abrir
 document.getElementById("messages").innerHTML = "";
 
 document.getElementById("home").style.display = "none";
@@ -194,7 +190,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR TEXTO
+// TEXTO
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -224,7 +220,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// ÁUDIO
+// 🎤 GRAVAR
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -238,9 +234,7 @@ mediaRecorder = new MediaRecorder(stream);
 audioChunks = [];
 
 mediaRecorder.ondataavailable = e => {
-  if(e.data.size > 0){
-    audioChunks.push(e.data);
-  }
+  if(e.data.size > 0) audioChunks.push(e.data);
 };
 
 mediaRecorder.start();
@@ -269,23 +263,13 @@ const reader = new FileReader();
 
 reader.onloadend = () => {
 
-  if(!reader.result) return;
+  recordedAudio = reader.result;
 
-  const msg = {
-    fromId: currentUser.id,
-    toId: currentChat.id,
-    audio: reader.result,
-    timestamp: Date.now()
-  };
+  const preview = document.getElementById("audioPreview");
+  const player = document.getElementById("previewPlayer");
 
-  addMessage(msg);
-  saveLocalMessage(msg);
-
-  fetch("/sendMessage", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(msg)
-  });
+  preview.style.display = "flex";
+  player.src = recordedAudio;
 
 };
 
@@ -299,7 +283,47 @@ recordBtn.textContent = "🎤";
 };
 
 // =========================
-// SALVAR LOCAL
+// 📤 ENVIAR ÁUDIO
+
+document.getElementById("sendAudioBtn").onclick = () => {
+
+if(!recordedAudio || !currentChat) return;
+
+const msg = {
+  fromId: currentUser.id,
+  toId: currentChat.id,
+  audio: recordedAudio,
+  timestamp: Date.now()
+};
+
+addMessage(msg);
+saveLocalMessage(msg);
+
+fetch("/sendMessage", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify(msg)
+});
+
+recordedAudio = null;
+document.getElementById("audioPreview").style.display = "none";
+
+};
+
+// =========================
+// 🗑️ APAGAR ÁUDIO
+
+document.getElementById("deleteAudioBtn").onclick = () => {
+
+recordedAudio = null;
+
+document.getElementById("previewPlayer").src = "";
+document.getElementById("audioPreview").style.display = "none";
+
+};
+
+// =========================
+// LOCAL
 
 function saveLocalMessage(msg){
 localMessages.push(msg);
@@ -307,7 +331,7 @@ localStorage.setItem("localMessages", JSON.stringify(localMessages));
 }
 
 // =========================
-// LOAD MESSAGES (🔥 FIX ÁUDIO)
+// LOAD
 
 async function loadMessages(){
 
@@ -346,8 +370,6 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
-// CHAT
-
 if(!currentChat) return;
 
 const filtered = msgs.filter(m =>
@@ -357,7 +379,6 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// 🔥 NÃO LIMPA MAIS — SÓ ADICIONA NOVOS
 const existentes = container.children.length;
 
 for (let i = existentes; i < filtered.length; i++){
@@ -366,16 +387,6 @@ for (let i = existentes; i < filtered.length; i++){
 
 container.scrollTop = container.scrollHeight;
 
-}
-
-// =========================
-// FORMATAR TEMPO
-
-function formatTime(seconds){
-if(!seconds || isNaN(seconds)) return "0:00";
-const m = Math.floor(seconds / 60);
-const s = Math.floor(seconds % 60);
-return `${m}:${String(s).padStart(2,"0")}`;
 }
 
 // =========================
@@ -391,23 +402,12 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
-// ÁUDIO
+// 🎤 ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
   audio.src = m.audio;
-
-  const duration = document.createElement("div");
-  duration.style.fontSize = "10px";
-  duration.style.opacity = "0.6";
-  duration.textContent = "Carregando...";
-
-  audio.onloadedmetadata = () => {
-    duration.textContent = formatTime(audio.duration);
-  };
-
   bubble.appendChild(audio);
-  bubble.appendChild(duration);
 }
 
 // TEXTO
@@ -424,10 +424,8 @@ time.style.opacity = "0.6";
 time.style.textAlign = "right";
 
 if(m.timestamp){
-const date = new Date(m.timestamp);
-const h = String(date.getHours()).padStart(2,"0");
-const min = String(date.getMinutes()).padStart(2,"0");
-time.textContent = `${h}:${min}`;
+const d = new Date(m.timestamp);
+time.textContent = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
 bubble.appendChild(time);
