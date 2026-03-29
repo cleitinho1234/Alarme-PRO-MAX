@@ -38,13 +38,11 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// nome local
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
 }
 
-// input
 const input = document.getElementById("username");
 if(input){
   input.value = currentUser.username || "";
@@ -52,7 +50,6 @@ if(input){
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// foto
 if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
@@ -62,13 +59,13 @@ atualizarContatos().then(renderContacts);
 
 setInterval(loadMessages, 1500);
 
-// 🎤 ativa áudio
+// 🔥 ATIVA ÁUDIO
 setupAudio();
 
 });
 
 // =========================
-// ÁUDIO PRO
+// 🎤 ÁUDIO
 
 function setupAudio(){
 
@@ -128,7 +125,7 @@ preview.style.display = "flex";
 
 }
 
-// enviar áudio
+// ENVIAR ÁUDIO
 sendAudioBtn.onclick = () => {
 
 if(!audioBlobGlobal) return;
@@ -163,7 +160,7 @@ reader.readAsDataURL(audioBlobGlobal);
 resetAudio();
 };
 
-// cancelar
+// CANCELAR
 cancelAudioBtn.onclick = () => {
 resetAudio();
 };
@@ -183,7 +180,7 @@ return `${m}:${String(s).padStart(2,"0")}`;
 }
 
 // =========================
-// SALVAR PERFIL
+// SALVAR PERFIL (SEU ORIGINAL)
 
 document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
 
@@ -218,10 +215,10 @@ currentUser.photo = photo;
 localStorage.setItem("username", username);
 
 contacts = contacts.map(c => {
-if(c.id === currentUser.id){
-  return {...c, username, photo};
-}
-return c;
+  if(c.id === currentUser.id){
+    return {...c, username, photo};
+  }
+  return c;
 });
 
 localStorage.setItem("contacts", JSON.stringify(contacts));
@@ -241,9 +238,11 @@ body: JSON.stringify({
 }
 
 // =========================
-// CONTATOS
+// CONTATOS (SEU ORIGINAL)
 
 async function atualizarContatos(){
+
+let mudou = false;
 
 for (let i = 0; i < contacts.length; i++){
 
@@ -251,12 +250,19 @@ const res = await fetch(`/getUser/${contacts[i].id}`);
 const user = await res.json();
 
 if(!user.error && user.username){
+
+if(contacts[i].username !== user.username || contacts[i].photo !== user.photo){
   contacts[i] = user;
+  mudou = true;
 }
 
 }
 
+}
+
+if(mudou){
 localStorage.setItem("contacts", JSON.stringify(contacts));
+}
 
 }
 
@@ -292,7 +298,7 @@ abrirChat(user);
 }
 
 // =========================
-// CHAT
+// CHAT (SEU ORIGINAL)
 
 function abrirChat(user){
 
@@ -319,7 +325,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR TEXTO
+// ENVIAR TEXTO (SEU ORIGINAL)
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -350,7 +356,7 @@ body: JSON.stringify({
 };
 
 // =========================
-// LOAD MESSAGES
+// LOAD MESSAGES (SEU ORIGINAL)
 
 async function loadMessages(){
 
@@ -395,8 +401,6 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
-// chat
-
 if(!currentChat) return;
 
 const filtered = msgs.filter(m =>
@@ -417,7 +421,7 @@ container.scrollTop = container.scrollHeight;
 }
 
 // =========================
-// MENSAGEM
+// 🔥 MENSAGEM (AGORA COM ÁUDIO)
 
 function addMessage(m){
 
@@ -429,14 +433,14 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
-// texto
+// TEXTO
 if(m.text){
 const text = document.createElement("div");
 text.textContent = m.text;
 bubble.appendChild(text);
 }
 
-// áudio
+// 🔥 ÁUDIO
 if(m.audio){
 const audio = document.createElement("audio");
 audio.controls = true;
@@ -444,7 +448,7 @@ audio.src = m.audio;
 bubble.appendChild(audio);
 }
 
-// horário
+// HORÁRIO
 const time = document.createElement("div");
 time.style.fontSize = "10px";
 time.style.opacity = "0.6";
@@ -463,4 +467,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
- }
+  }
