@@ -132,6 +132,63 @@ body {
   display: block;
   margin-bottom: 10px;
 }
+
+/* 🔥 MODAL RGB */
+#confirmModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+}
+
+#confirmBox {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  text-align: center;
+  width: 250px;
+
+  border: 3px solid;
+  border-image: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, violet) 1;
+  animation: rgbBorder 3s linear infinite;
+}
+
+@keyframes rgbBorder {
+  0% { border-image-source: linear-gradient(45deg, red, orange); }
+  25% { border-image-source: linear-gradient(45deg, yellow, green); }
+  50% { border-image-source: linear-gradient(45deg, cyan, blue); }
+  75% { border-image-source: linear-gradient(45deg, violet, red); }
+  100% { border-image-source: linear-gradient(45deg, red, orange); }
+}
+
+#confirmBox p {
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+#confirmBox button {
+  padding: 8px 15px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#confirmYes {
+  background: red;
+  color: white;
+}
+
+#confirmNo {
+  background: gray;
+  color: white;
+}
 </style>
 </head>
 
@@ -178,15 +235,21 @@ body {
 
 <div id="messages"></div>
 
-<!-- INPUT (SEM ÁUDIO) -->
+<!-- INPUT -->
 <div id="chatInput">
-
   <input type="text" id="messageText" placeholder="Mensagem">
-
   <button id="sendMessageBtn">Enviar</button>
+</div>
 
 </div>
 
+<!-- 🔥 MODAL CONFIRMAÇÃO -->
+<div id="confirmModal">
+  <div id="confirmBox">
+    <p>Excluir contato?</p>
+    <button id="confirmYes">Excluir</button>
+    <button id="confirmNo">Cancelar</button>
+  </div>
 </div>
 
 <script src="script.js"></script>
