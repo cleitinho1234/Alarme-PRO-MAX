@@ -9,7 +9,6 @@ let lastTimestamp = Number(localStorage.getItem("lastTimestamp")) || 0;
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
-let recordedAudio = null;
 
 // 💾 CACHE LOCAL
 let localMessages = JSON.parse(localStorage.getItem("localMessages")) || [];
@@ -24,7 +23,10 @@ let savedId = localStorage.getItem("userId");
 if (savedId) {
   const res = await fetch(`/getUser/${savedId}`);
   const user = await res.json();
-  if (!user.error && user.username) currentUser = user;
+
+  if (!user.error && user.username) {
+    currentUser = user;
+  }
 }
 
 if (!currentUser) {
@@ -37,9 +39,11 @@ if (!currentUser) {
   localStorage.setItem("userId", currentUser.id);
 }
 
-// nome local
+// nome fixo
 const savedName = localStorage.getItem("username");
-if(savedName) currentUser.username = savedName;
+if(savedName){
+  currentUser.username = savedName;
+}
 
 document.getElementById("username").value = currentUser.username || "";
 document.getElementById("userIdDisplay").textContent = currentUser.id;
@@ -171,6 +175,7 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
+// 🔥 limpa só ao abrir
 document.getElementById("messages").innerHTML = "";
 
 document.getElementById("home").style.display = "none";
@@ -189,7 +194,7 @@ currentChat = null;
 }
 
 // =========================
-// TEXTO
+// ENVIAR TEXTO
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -219,11 +224,11 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 ÁUDIO (FIX MOBILE)
+// ÁUDIO
 
 const recordBtn = document.getElementById("recordBtn");
 
-async function startRecording(){
+recordBtn.onmousedown = async () => {
 
 if(isRecording) return;
 
@@ -233,16 +238,18 @@ mediaRecorder = new MediaRecorder(stream);
 audioChunks = [];
 
 mediaRecorder.ondataavailable = e => {
-  if(e.data.size > 0) audioChunks.push(e.data);
+  if(e.data.size > 0){
+    audioChunks.push(e.data);
+  }
 };
 
 mediaRecorder.start();
 isRecording = true;
 recordBtn.textContent = "⏺️";
 
-}
+};
 
-function stopRecording(){
+recordBtn.onmouseup = () => {
 
 if(!mediaRecorder || !isRecording) return;
 
@@ -252,91 +259,47 @@ setTimeout(() => {
 
 mediaRecorder.stop();
 
-if(audioChunks.length === 0) return resetBtn();
+if(audioChunks.length === 0) return;
 
 const blob = new Blob(audioChunks, { type: "audio/webm" });
 
-if(blob.size < 1000) return resetBtn();
+if(blob.size < 1000) return;
 
 const reader = new FileReader();
 
 reader.onloadend = () => {
 
-  recordedAudio = reader.result;
+  if(!reader.result) return;
 
-  document.getElementById("audioPreview").style.display = "flex";
-  document.getElementById("previewPlayer").src = recordedAudio;
+  const msg = {
+    fromId: currentUser.id,
+    toId: currentChat.id,
+    audio: reader.result,
+    timestamp: Date.now()
+  };
+
+  addMessage(msg);
+  saveLocalMessage(msg);
+
+  fetch("/sendMessage", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(msg)
+  });
 
 };
 
 reader.readAsDataURL(blob);
 
-resetBtn();
-
-}, 200);
-
-}
-
-function resetBtn(){
 isRecording = false;
 recordBtn.textContent = "🎤";
-}
 
-// eventos
-recordBtn.addEventListener("mousedown", startRecording);
-recordBtn.addEventListener("mouseup", stopRecording);
-
-recordBtn.addEventListener("touchstart", e => {
-e.preventDefault();
-startRecording();
-});
-
-recordBtn.addEventListener("touchend", e => {
-e.preventDefault();
-stopRecording();
-});
-
-// =========================
-// ENVIAR ÁUDIO
-
-document.getElementById("sendAudioBtn").onclick = () => {
-
-if(!recordedAudio || !currentChat) return;
-
-const msg = {
-  fromId: currentUser.id,
-  toId: currentChat.id,
-  audio: recordedAudio,
-  timestamp: Date.now()
-};
-
-addMessage(msg);
-saveLocalMessage(msg);
-
-fetch("/sendMessage", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify(msg)
-});
-
-recordedAudio = null;
-document.getElementById("audioPreview").style.display = "none";
+}, 250);
 
 };
 
 // =========================
-// APAGAR ÁUDIO
-
-document.getElementById("deleteAudioBtn").onclick = () => {
-
-recordedAudio = null;
-document.getElementById("previewPlayer").src = "";
-document.getElementById("audioPreview").style.display = "none";
-
-};
-
-// =========================
-// LOCAL
+// SALVAR LOCAL
 
 function saveLocalMessage(msg){
 localMessages.push(msg);
@@ -344,7 +307,7 @@ localStorage.setItem("localMessages", JSON.stringify(localMessages));
 }
 
 // =========================
-// LOAD
+// LOAD MESSAGES (🔥 FIX ÁUDIO)
 
 async function loadMessages(){
 
@@ -383,6 +346,8 @@ localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
+// CHAT
+
 if(!currentChat) return;
 
 const filtered = msgs.filter(m =>
@@ -392,6 +357,7 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
+// 🔥 NÃO LIMPA MAIS — SÓ ADICIONA NOVOS
 const existentes = container.children.length;
 
 for (let i = existentes; i < filtered.length; i++){
@@ -400,6 +366,16 @@ for (let i = existentes; i < filtered.length; i++){
 
 container.scrollTop = container.scrollHeight;
 
+}
+
+// =========================
+// FORMATAR TEMPO
+
+function formatTime(seconds){
+if(!seconds || isNaN(seconds)) return "0:00";
+const m = Math.floor(seconds / 60);
+const s = Math.floor(seconds % 60);
+return `${m}:${String(s).padStart(2,"0")}`;
 }
 
 // =========================
@@ -415,27 +391,43 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
+// ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
   audio.src = m.audio;
+
+  const duration = document.createElement("div");
+  duration.style.fontSize = "10px";
+  duration.style.opacity = "0.6";
+  duration.textContent = "Carregando...";
+
+  audio.onloadedmetadata = () => {
+    duration.textContent = formatTime(audio.duration);
+  };
+
   bubble.appendChild(audio);
+  bubble.appendChild(duration);
 }
 
+// TEXTO
 if(m.text){
   const text = document.createElement("div");
   text.textContent = m.text;
   bubble.appendChild(text);
 }
 
+// HORÁRIO
 const time = document.createElement("div");
 time.style.fontSize = "10px";
 time.style.opacity = "0.6";
 time.style.textAlign = "right";
 
 if(m.timestamp){
-const d = new Date(m.timestamp);
-time.textContent = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+const date = new Date(m.timestamp);
+const h = String(date.getHours()).padStart(2,"0");
+const min = String(date.getMinutes()).padStart(2,"0");
+time.textContent = `${h}:${min}`;
 }
 
 bubble.appendChild(time);
