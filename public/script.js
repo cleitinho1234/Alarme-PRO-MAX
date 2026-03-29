@@ -31,7 +31,6 @@ if (!currentUser) {
   localStorage.setItem("userId", currentUser.id);
 }
 
-// nome fixo
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
@@ -44,7 +43,7 @@ if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
-// 🔥 ADICIONAR CONTATO
+// ADICIONAR CONTATO
 document.getElementById("addFriendBtn").onclick = async () => {
 
 const id = document.getElementById("addUserId").value.trim();
@@ -71,7 +70,6 @@ document.getElementById("addUserId").value = "";
 renderContacts();
 atualizarContatos().then(renderContacts);
 
-// tempo real
 setInterval(loadMessages, 1500);
 
 });
@@ -175,16 +173,18 @@ document.querySelectorAll(".contact").forEach(el => {
 
 let pressTimer;
 
+// 🔥 SEGURAR MAIS TEMPO
 el.addEventListener("mousedown", () => {
-  pressTimer = setTimeout(() => deletarContato(el.dataset.id), 600);
+  pressTimer = setTimeout(() => mostrarConfirmacao(el.dataset.id), 1200);
 });
 el.addEventListener("mouseup", () => clearTimeout(pressTimer));
 
 el.addEventListener("touchstart", () => {
-  pressTimer = setTimeout(() => deletarContato(el.dataset.id), 600);
+  pressTimer = setTimeout(() => mostrarConfirmacao(el.dataset.id), 1200);
 });
 el.addEventListener("touchend", () => clearTimeout(pressTimer));
 
+// clicar normal abre chat
 el.onclick = () => {
   const user = contacts.find(c => c.id == el.dataset.id);
   abrirChat(user);
@@ -195,14 +195,44 @@ el.onclick = () => {
 }
 
 // =========================
+// MODAL BONITO RGB
+
+function mostrarConfirmacao(id){
+
+const modal = document.createElement("div");
+modal.id = "confirmModal";
+
+modal.innerHTML = `
+<div class="modal-box">
+  <h3>Excluir contato?</h3>
+  <p>Essa ação não pode ser desfeita</p>
+  
+  <div class="modal-actions">
+    <button id="cancelBtn">Cancelar</button>
+    <button id="deleteBtn">Excluir</button>
+  </div>
+</div>
+`;
+
+document.body.appendChild(modal);
+
+document.getElementById("cancelBtn").onclick = () => {
+  modal.remove();
+};
+
+document.getElementById("deleteBtn").onclick = () => {
+  deletarContato(id);
+  modal.remove();
+};
+
+}
+
+// =========================
 // DELETAR CONTATO
 
 function deletarContato(id){
 
-if(!confirm("Excluir contato?")) return;
-
 contacts = contacts.filter(c => c.id != id);
-
 delete unreadCounts[id];
 
 localStorage.setItem("contacts", JSON.stringify(contacts));
@@ -242,7 +272,7 @@ currentChat = null;
 }
 
 // =========================
-// 🚀 ENVIAR (INSTANTÂNEO SEM BUG)
+// ENVIAR
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -262,14 +292,11 @@ const msg = {
   timestamp
 };
 
-// 🔥 mostra na hora
 addMessage(msg);
 
-// 🔥 salva timestamp pra não duplicar depois
 lastTimestamp = timestamp;
 localStorage.setItem("lastTimestamp", lastTimestamp);
 
-// 🔥 envia pro servidor
 fetch("/sendMessage", {
   method: "POST",
   headers: {"Content-Type":"application/json"},
@@ -292,7 +319,6 @@ if(m.timestamp <= lastTimestamp) continue;
 
 lastTimestamp = m.timestamp;
 
-// recebeu mensagem
 if(m.toId == currentUser.id){
 
   if(!contacts.some(c => c.id == m.fromId)){
@@ -375,4 +401,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-                    }
+  }
