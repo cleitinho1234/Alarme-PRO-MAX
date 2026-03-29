@@ -6,7 +6,7 @@ let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 // 🔴 CONTADOR
 let unreadCounts = JSON.parse(localStorage.getItem("unreadCounts")) || {};
 
-// 🧠 CONTROLE DE MENSAGENS JÁ LIDAS
+// 🧠 CONTROLE DE MENSAGENS
 let lastTimestamp = localStorage.getItem("lastTimestamp") || 0;
 
 // =========================
@@ -34,7 +34,7 @@ localStorage.setItem("userId", currentUser.id);
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
-// 🔥 RESTAURA NOME
+// RESTAURA NOME
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
@@ -50,7 +50,6 @@ if(currentUser.photo){
 await atualizarContatos();
 await renderContacts();
 
-// 🔄 tempo real
 setInterval(loadMessages, 1500);
 
 });
@@ -170,7 +169,7 @@ function abrirChat(user){
 
 currentChat = user;
 
-// 🔴 ZERA CONTADOR
+// ZERA CONTADOR
 unreadCounts[user.id] = 0;
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
@@ -212,7 +211,7 @@ addMessage({
   text
 });
 
-// envia em background
+// envia
 fetch("/sendMessage", {
 method: "POST",
 headers: {"Content-Type":"application/json"},
@@ -227,7 +226,7 @@ body: JSON.stringify({
 };
 
 // =========================
-// LOAD MESSAGES (CORRIGIDO REAL)
+// LOAD MESSAGES (FINAL)
 
 async function loadMessages(initial = false){
 
@@ -236,16 +235,23 @@ const msgs = await res.json();
 
 for (let m of msgs){
 
-  // 🚫 ignora mensagens já contadas
   if(m.timestamp <= lastTimestamp) continue;
 
-  // atualiza timestamp
   if(m.timestamp > lastTimestamp){
     lastTimestamp = m.timestamp;
   }
 
   if(m.toId == currentUser.id){
 
+    // 🔼 SOBE PRO TOPO
+    const index = contacts.findIndex(c => c.id == m.fromId);
+
+    if(index !== -1){
+      const user = contacts.splice(index, 1)[0];
+      contacts.unshift(user);
+    }
+
+    // 🔴 CONTADOR
     if(currentChat?.id !== m.fromId){
 
       if(!unreadCounts[m.fromId]){
@@ -258,7 +264,7 @@ for (let m of msgs){
 
   }
 
-  // auto contato
+  // AUTO CONTATO
   if(m.toId == currentUser.id && m.fromId != currentUser.id){
 
     if(!contacts.some(c => c.id == m.fromId)){
@@ -276,13 +282,11 @@ for (let m of msgs){
 
 }
 
-// 💾 salva
 localStorage.setItem("lastTimestamp", lastTimestamp);
 localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
 
 renderContacts();
 
-// =========================
 // CHAT
 
 if(!currentChat) return;
@@ -321,4 +325,4 @@ bubble.textContent = m.text;
 div.appendChild(bubble);
 container.appendChild(div);
 
-    }
+}
