@@ -5,7 +5,6 @@ let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
 let unreadCounts = JSON.parse(localStorage.getItem("unreadCounts")) || {};
 let lastTimestamp = localStorage.getItem("lastTimestamp") || 0;
 
-// ✍️ DIGITANDO
 let typingTimeout = null;
 
 // =========================
@@ -39,19 +38,20 @@ if(savedName){
   currentUser.username = savedName;
 }
 
-// mostrar contatos instantâneo
+// contatos instantâneo
 renderContacts();
-
-// atualizar em background
 atualizarContatos().then(renderContacts);
 
-// tempo real
+// tempo real mensagens
 setInterval(loadMessages, 1500);
+
+// 🔥 tempo real digitando
+setInterval(checkTyping, 500);
 
 });
 
 // =========================
-// DIGITANDO DETECÇÃO
+// DIGITANDO (ENVIAR)
 
 const inputMsg = document.getElementById("messageText");
 
@@ -59,7 +59,7 @@ inputMsg.addEventListener("input", () => {
 
 if(!currentChat) return;
 
-// enviando status digitando
+// envia digitando
 fetch("/typing", {
   method: "POST",
   headers: {"Content-Type":"application/json"},
@@ -70,7 +70,7 @@ fetch("/typing", {
   })
 });
 
-// parar depois de 1s
+// parar depois
 clearTimeout(typingTimeout);
 
 typingTimeout = setTimeout(() => {
@@ -83,9 +83,35 @@ typingTimeout = setTimeout(() => {
       typing: false
     })
   });
-}, 1000);
+}, 1500);
 
 });
+
+// =========================
+// DIGITANDO (RECEBER)
+
+async function checkTyping(){
+
+if(!currentChat) return;
+
+try {
+
+const res = await fetch(`/typing/${currentUser.id}`);
+const typingData = await res.json();
+
+const statusDiv = document.getElementById("typingStatus");
+
+if(typingData[currentChat.id]){
+  statusDiv.textContent = "digitando...";
+} else {
+  statusDiv.textContent = "";
+}
+
+} catch(e){
+console.log("erro typing", e);
+}
+
+}
 
 // =========================
 // CONTATOS
@@ -200,7 +226,6 @@ if(m.timestamp > lastTimestamp){
 
 if(m.toId == currentUser.id){
 
-  // sobe pro topo
   const index = contacts.findIndex(c => c.id == m.fromId);
   if(index !== -1){
     const user = contacts.splice(index, 1)[0];
@@ -247,24 +272,10 @@ addMessage(m);
 
 container.scrollTop = container.scrollHeight;
 
-// =========================
-// ✍️ DIGITANDO STATUS
-
-const resTyping = await fetch(`/typing/${currentUser.id}`);
-const typingData = await resTyping.json();
-
-const statusDiv = document.getElementById("typingStatus");
-
-if(typingData[currentChat.id]){
-statusDiv.textContent = "digitando...";
-} else {
-statusDiv.textContent = "";
-}
-
 }
 
 // =========================
-// MENSAGEM COM HORÁRIO
+// MENSAGEM
 
 function addMessage(m){
 
@@ -296,4 +307,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-                   }
+  }
