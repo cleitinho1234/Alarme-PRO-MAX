@@ -10,6 +10,9 @@ let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 
+// 🧠 CACHE LOCAL (SEGURA ÁUDIO MESMO SE BACKEND FALHAR)
+let localMessages = JSON.parse(localStorage.getItem("localMessages")) || [];
+
 // =========================
 // INICIAR
 
@@ -36,17 +39,12 @@ if (!currentUser) {
   localStorage.setItem("userId", currentUser.id);
 }
 
-// nome salvo
 const savedName = localStorage.getItem("username");
 if(savedName){
   currentUser.username = savedName;
 }
 
-const input = document.getElementById("username");
-if(input){
-  input.value = currentUser.username || "";
-}
-
+document.getElementById("username").value = currentUser.username || "";
 document.getElementById("userIdDisplay").textContent = currentUser.id;
 
 if(currentUser.photo){
@@ -74,14 +72,11 @@ let photo = currentUser.photo;
 
 if(file){
   const reader = new FileReader();
-
   reader.onload = async () => {
     photo = reader.result;
     await salvarPerfil(username, photo);
   };
-
   reader.readAsDataURL(file);
-
 } else {
   await salvarPerfil(username, photo);
 }
@@ -119,34 +114,22 @@ fetch("/saveProfile", {
 }
 
 // =========================
-// ATUALIZAR CONTATOS
+// CONTATOS
 
 async function atualizarContatos(){
 
-let mudou = false;
-
 for (let i = 0; i < contacts.length; i++){
-
   const res = await fetch(`/getUser/${contacts[i].id}`);
   const user = await res.json();
 
   if(!user.error && user.username){
-    if(contacts[i].username !== user.username || contacts[i].photo !== user.photo){
-      contacts[i] = user;
-      mudou = true;
-    }
+    contacts[i] = user;
   }
-
 }
 
-if(mudou){
-  localStorage.setItem("contacts", JSON.stringify(contacts));
-}
+localStorage.setItem("contacts", JSON.stringify(contacts));
 
 }
-
-// =========================
-// CONTATOS
 
 async function renderContacts(){
 
@@ -180,7 +163,7 @@ abrirChat(user);
 }
 
 // =========================
-// ABRIR CHAT
+// CHAT
 
 function abrirChat(user){
 
@@ -199,9 +182,6 @@ document.getElementById("chatName").textContent = user.username;
 loadMessages();
 
 }
-
-// =========================
-// VOLTAR
 
 function voltar(){
 document.getElementById("chatScreen").style.display = "none";
@@ -229,6 +209,7 @@ const msg = {
 };
 
 addMessage(msg);
+saveLocalMessage(msg);
 
 fetch("/sendMessage", {
 method: "POST",
@@ -239,7 +220,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 GRAVAÇÃO FINAL (SEM BUG)
+// 🎤 ÁUDIO (FIX TOTAL)
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -268,68 +249,69 @@ recordBtn.onmouseup = () => {
 
 if(!mediaRecorder || !isRecording) return;
 
-// força capturar áudio mesmo rápido
 mediaRecorder.requestData();
 
 setTimeout(() => {
 
-  mediaRecorder.stop();
+mediaRecorder.stop();
 
-  if(audioChunks.length === 0){
-    console.log("⚠️ áudio ignorado");
-    isRecording = false;
-    recordBtn.textContent = "🎤";
-    return;
-  }
+if(audioChunks.length === 0) return;
 
-  const blob = new Blob(audioChunks, { type: "audio/webm" });
+const blob = new Blob(audioChunks, { type: "audio/webm" });
 
-  if(blob.size < 1000){
-    console.log("⚠️ áudio muito curto");
-    isRecording = false;
-    recordBtn.textContent = "🎤";
-    return;
-  }
+if(blob.size < 1000) return;
 
-  const reader = new FileReader();
+const reader = new FileReader();
 
-  reader.onloadend = () => {
+reader.onloadend = () => {
 
-    if(!reader.result) return;
+  if(!reader.result) return;
 
-    const msg = {
-      fromId: currentUser.id,
-      toId: currentChat.id,
-      audio: reader.result,
-      timestamp: Date.now()
-    };
-
-    addMessage(msg);
-
-    fetch("/sendMessage", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(msg)
-    });
-
+  const msg = {
+    fromId: currentUser.id,
+    toId: currentChat.id,
+    audio: reader.result,
+    timestamp: Date.now()
   };
 
-  reader.readAsDataURL(blob);
+  addMessage(msg);
+  saveLocalMessage(msg);
 
-  isRecording = false;
-  recordBtn.textContent = "🎤";
+  fetch("/sendMessage", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(msg)
+  });
+
+};
+
+reader.readAsDataURL(blob);
+
+isRecording = false;
+recordBtn.textContent = "🎤";
 
 }, 250);
 
 };
 
 // =========================
-// LOAD MESSAGES
+// 💾 SALVAR LOCAL
+
+function saveLocalMessage(msg){
+localMessages.push(msg);
+localStorage.setItem("localMessages", JSON.stringify(localMessages));
+}
+
+// =========================
+// LOAD MESSAGES (🔥 CORRIGIDO)
 
 async function loadMessages(){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
-const msgs = await res.json();
+const serverMsgs = await res.json();
+
+// 🔥 junta servidor + local (NUNCA PERDE ÁUDIO)
+const msgs = [...serverMsgs, ...localMessages];
 
 for (let m of msgs){
 
@@ -352,14 +334,6 @@ if(m.toId == currentUser.id){
     unreadCounts[m.fromId] = (unreadCounts[m.fromId] || 0) + 1;
   }
 
-}
-
-if(m.toId == currentUser.id && m.fromId != currentUser.id){
-  if(!contacts.some(c => c.id == m.fromId)){
-    const resUser = await fetch(`/getUser/${m.fromId}`);
-    const newUser = await resUser.json();
-    if(!newUser.error) contacts.unshift(newUser);
-  }
 }
 
 }
@@ -402,6 +376,15 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
+// 🎤 ÁUDIO PRIORIDADE
+if(m.audio){
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.src = m.audio;
+  audio.style.display = "block";
+  bubble.appendChild(audio);
+}
+
 // TEXTO
 if(m.text){
   const text = document.createElement("div");
@@ -409,21 +392,10 @@ if(m.text){
   bubble.appendChild(text);
 }
 
-// ÁUDIO
-if(m.audio){
-  const audio = document.createElement("audio");
-  audio.controls = true;
-  audio.src = m.audio;
-  audio.style.display = "block";
-  audio.style.marginTop = "5px";
-  bubble.appendChild(audio);
-}
-
 // HORÁRIO
 const time = document.createElement("div");
 time.style.fontSize = "10px";
 time.style.opacity = "0.6";
-time.style.marginTop = "5px";
 time.style.textAlign = "right";
 
 if(m.timestamp){
@@ -438,4 +410,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
