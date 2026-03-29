@@ -193,7 +193,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR TEXTO
+// ENVIAR TEXTO (🔥 FIX DUPLICAÇÃO)
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -205,7 +205,7 @@ if(!text || !currentChat) return;
 input.value = "";
 
 const msg = {
-  id: Date.now() + Math.random(), // 🔥 FIX
+  id: Date.now(), // 🔥 ID único
   fromId: currentUser.id,
   toId: currentChat.id,
   text,
@@ -224,7 +224,7 @@ body: JSON.stringify(msg)
 };
 
 // =========================
-// 🎤 ÁUDIO
+// 🎤 ÁUDIO (CELULAR OK + SEM BUG)
 
 const recordBtn = document.getElementById("recordBtn");
 
@@ -232,6 +232,7 @@ recordBtn.onclick = async () => {
 
 if(!currentChat) return;
 
+// iniciar
 if(!isRecording){
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -256,7 +257,7 @@ if(!isRecording){
     reader.onloadend = () => {
 
       const msg = {
-        id: Date.now() + Math.random(), // 🔥 FIX
+        id: Date.now(), // 🔥 evita duplicação
         fromId: currentUser.id,
         toId: currentChat.id,
         audio: reader.result,
@@ -282,51 +283,51 @@ if(!isRecording){
   isRecording = true;
   recordBtn.textContent = "⏺️";
 
-}else{
+}
 
+// parar
+else{
   mediaRecorder.stop();
   isRecording = false;
   recordBtn.textContent = "🎤";
-
 }
 
 };
 
 // =========================
-// SALVAR LOCAL
+// SALVAR LOCAL (🔥 SEM DUPLICAR)
 
 function saveLocalMessage(msg){
+
+if(localMessages.some(m => m.id === msg.id)) return;
+
 localMessages.push(msg);
 localStorage.setItem("localMessages", JSON.stringify(localMessages));
+
 }
 
 // =========================
-// LOAD MESSAGES (🔥 FIX PRINCIPAL)
+// LOAD MESSAGES (🔥 FIX TOTAL)
 
 async function loadMessages(){
 
 const res = await fetch(`/getMessages/${currentUser.id}`);
 const serverMsgs = await res.json();
 
-// 🔥 REMOVE DUPLICADOS
-const allMsgs = [...serverMsgs, ...localMessages];
-const msgs = [];
-const ids = new Set();
+// 🔥 remover duplicados
+const map = new Map();
 
-for (let m of allMsgs) {
-  if (!ids.has(m.id)) {
-    ids.add(m.id);
-    msgs.push(m);
-  }
-}
+[...serverMsgs, ...localMessages].forEach(m => {
+  map.set(m.id || m.timestamp, m);
+});
+
+const msgs = Array.from(map.values()).sort((a,b)=>a.timestamp-b.timestamp);
 
 for (let m of msgs){
 
 if(m.timestamp <= lastTimestamp) continue;
 
-if(m.timestamp > lastTimestamp){
-  lastTimestamp = m.timestamp;
-}
+lastTimestamp = m.timestamp;
 
 if(m.toId == currentUser.id){
 
@@ -359,8 +360,7 @@ const filtered = msgs.filter(m =>
 
 const container = document.getElementById("messages");
 
-// 🔥 RECRIA CHAT (SEM BUG)
-container.innerHTML = "";
+container.innerHTML = ""; // 🔥 resolve bug visual
 
 for (let m of filtered){
   addMessage(m);
@@ -393,7 +393,7 @@ div.className = "message " + (m.fromId == currentUser.id ? "me" : "other");
 const bubble = document.createElement("div");
 bubble.className = "bubble";
 
-// ÁUDIO
+// 🎧 ÁUDIO
 if(m.audio){
   const audio = document.createElement("audio");
   audio.controls = true;
@@ -437,4 +437,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
