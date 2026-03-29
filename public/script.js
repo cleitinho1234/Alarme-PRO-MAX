@@ -15,7 +15,11 @@ let savedId = localStorage.getItem("userId");
 if (savedId) {
 const res = await fetch(`/getUser/${savedId}`);
 const user = await res.json();
-if (!user.error) currentUser = user;
+
+// 🔥 só usa servidor se vier válido
+if (!user.error && user.username) {
+  currentUser = user;
+}
 }
 
 if (!currentUser) {
@@ -28,19 +32,17 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// 🔥 PRIORIDADE LOCAL (SEU NOME NÃO SOME MAIS)
+// 🔥 PRIORIDADE LOCAL (NUNCA MAIS SOME)
 const savedName = localStorage.getItem("username");
 
 if(savedName){
   currentUser.username = savedName;
-} else if(currentUser.username){
-  localStorage.setItem("username", currentUser.username);
 }
 
-// 🔥 MOSTRA NO INPUT
+// 🔥 INPUT
 const input = document.getElementById("username");
-if(input && currentUser.username){
-  input.value = currentUser.username;
+if(input){
+  input.value = currentUser.username || "";
 }
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
@@ -62,7 +64,7 @@ setInterval(loadMessages, 1500);
 });
 
 // =========================
-// SALVAR PERFIL
+// SALVAR PERFIL (FIX REAL)
 
 document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
 
@@ -91,28 +93,21 @@ await salvarPerfil(username, photo);
 
 async function salvarPerfil(username, photo){
 
-const res = await fetch("/saveProfile", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
-body: JSON.stringify({
-  id: currentUser.id,
-  username,
-  photo
-})
-});
+// 🔥 ATUALIZA NA HORA (FRONT MANDA)
+currentUser.username = username;
+currentUser.photo = photo;
 
-const updatedUser = await res.json();
+// salva local (PRINCIPAL)
+localStorage.setItem("username", username);
 
-// 🔥 ATUALIZA USER
-currentUser = updatedUser;
-
-// 🔥 SALVA LOCAL (NUNCA MAIS SOME)
-localStorage.setItem("username", updatedUser.username);
-
-// 🔥 ATUALIZA NOS CONTATOS
+// 🔥 atualiza contatos local
 contacts = contacts.map(c => {
-  if(c.id === updatedUser.id){
-    return updatedUser;
+  if(c.id === currentUser.id){
+    return {
+      ...c,
+      username,
+      photo
+    };
   }
   return c;
 });
@@ -120,6 +115,17 @@ contacts = contacts.map(c => {
 localStorage.setItem("contacts", JSON.stringify(contacts));
 
 renderContacts();
+
+// 🔥 envia pro servidor (sem confiar nele)
+fetch("/saveProfile", {
+  method: "POST",
+  headers: {"Content-Type":"application/json"},
+  body: JSON.stringify({
+    id: currentUser.id,
+    username,
+    photo
+  })
+});
 
 }
 
@@ -135,7 +141,7 @@ for (let i = 0; i < contacts.length; i++){
   const res = await fetch(`/getUser/${contacts[i].id}`);
   const user = await res.json();
 
-  if(!user.error){
+  if(!user.error && user.username){
 
     if(contacts[i].username !== user.username || contacts[i].photo !== user.photo){
       contacts[i] = user;
