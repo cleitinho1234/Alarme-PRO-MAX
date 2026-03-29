@@ -46,7 +46,34 @@ if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
+// =========================
+// BOTÕES DO MODAL (SEGURO)
+
+document.getElementById("confirmYes").onclick = () => {
+
+if(!contatoParaExcluir) return;
+
+contacts = contacts.filter(c => c.id != contatoParaExcluir);
+delete unreadCounts[contatoParaExcluir];
+
+localStorage.setItem("contacts", JSON.stringify(contacts));
+localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
+
+contatoParaExcluir = null;
+
+document.getElementById("confirmModal").style.display = "none";
+
+renderContacts();
+};
+
+document.getElementById("confirmNo").onclick = () => {
+contatoParaExcluir = null;
+document.getElementById("confirmModal").style.display = "none";
+};
+
+// =========================
 // ADD CONTATO
+
 document.getElementById("addFriendBtn").onclick = async () => {
 
 const id = document.getElementById("addUserId").value.trim();
@@ -73,6 +100,7 @@ document.getElementById("addUserId").value = "";
 renderContacts();
 atualizarContatos().then(renderContacts);
 
+// tempo real
 setInterval(loadMessages, 1500);
 
 });
@@ -176,7 +204,7 @@ document.querySelectorAll(".contact").forEach(el => {
 
 let pressTimer;
 
-// SEGURAR MAIS TEMPO
+// SEGURAR (1.2s)
 el.addEventListener("mousedown", () => {
   pressTimer = setTimeout(() => deletarContato(el.dataset.id), 1200);
 });
@@ -187,7 +215,6 @@ el.addEventListener("touchstart", () => {
 });
 el.addEventListener("touchend", () => clearTimeout(pressTimer));
 
-// clique normal
 el.onclick = () => {
   const user = contacts.find(c => c.id == el.dataset.id);
   abrirChat(user);
@@ -198,35 +225,12 @@ el.onclick = () => {
 }
 
 // =========================
-// MODAL EXCLUIR
+// MODAL
 
 function deletarContato(id){
-  contatoParaExcluir = id;
-  document.getElementById("confirmModal").style.display = "flex";
+contatoParaExcluir = id;
+document.getElementById("confirmModal").style.display = "flex";
 }
-
-document.getElementById("confirmYes").onclick = () => {
-
-if(!contatoParaExcluir) return;
-
-contacts = contacts.filter(c => c.id != contatoParaExcluir);
-
-delete unreadCounts[contatoParaExcluir];
-
-localStorage.setItem("contacts", JSON.stringify(contacts));
-localStorage.setItem("unreadCounts", JSON.stringify(unreadCounts));
-
-contatoParaExcluir = null;
-
-document.getElementById("confirmModal").style.display = "none";
-
-renderContacts();
-};
-
-document.getElementById("confirmNo").onclick = () => {
-contatoParaExcluir = null;
-document.getElementById("confirmModal").style.display = "none";
-};
 
 // =========================
 // CHAT
@@ -258,7 +262,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR
+// ENVIAR (INSTANTÂNEO)
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -278,7 +282,7 @@ const msg = {
   timestamp
 };
 
-// mostra instantâneo
+// mostra na hora
 addMessage(msg);
 
 lastTimestamp = timestamp;
@@ -388,4 +392,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-                      }
+}
