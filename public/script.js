@@ -44,6 +44,43 @@ if(currentUser.photo){
   document.getElementById("profilePreview").src = currentUser.photo;
 }
 
+// 🔥 BOTÃO ADICIONAR CONTATO (FIX)
+document.getElementById("addFriendBtn").onclick = async () => {
+
+const id = document.getElementById("addUserId").value.trim();
+
+if(!id) return alert("Digite um ID");
+
+// não adicionar você mesmo
+if(id == currentUser.id){
+  return alert("Você não pode adicionar você mesmo");
+}
+
+// evitar duplicado
+if(contacts.some(c => c.id == id)){
+  return alert("Contato já adicionado");
+}
+
+// buscar no servidor
+const res = await fetch(`/getUser/${id}`);
+const user = await res.json();
+
+if(user.error || !user.username){
+  return alert("Usuário não encontrado");
+}
+
+// adicionar no topo
+contacts.unshift(user);
+
+localStorage.setItem("contacts", JSON.stringify(contacts));
+
+renderContacts();
+
+// limpar input
+document.getElementById("addUserId").value = "";
+
+};
+
 renderContacts();
 atualizarContatos().then(renderContacts);
 
@@ -125,7 +162,6 @@ localStorage.setItem("contacts", JSON.stringify(contacts));
 
 }
 
-// 🔥 CONTATOS COM SEGURAR PRA EXCLUIR
 function renderContacts(){
 
 const div = document.getElementById("contacts");
@@ -152,29 +188,18 @@ document.querySelectorAll(".contact").forEach(el => {
 
 let pressTimer;
 
-// 📱 SEGURAR (celular)
-el.addEventListener("touchstart", () => {
-  pressTimer = setTimeout(() => {
-    deletarContato(el.dataset.id);
-  }, 600);
-});
-
-el.addEventListener("touchend", () => {
-  clearTimeout(pressTimer);
-});
-
-// 💻 SEGURAR (PC)
+// segurar pra excluir
 el.addEventListener("mousedown", () => {
-  pressTimer = setTimeout(() => {
-    deletarContato(el.dataset.id);
-  }, 600);
+  pressTimer = setTimeout(() => deletarContato(el.dataset.id), 600);
 });
+el.addEventListener("mouseup", () => clearTimeout(pressTimer));
 
-el.addEventListener("mouseup", () => {
-  clearTimeout(pressTimer);
+el.addEventListener("touchstart", () => {
+  pressTimer = setTimeout(() => deletarContato(el.dataset.id), 600);
 });
+el.addEventListener("touchend", () => clearTimeout(pressTimer));
 
-// 👉 clique normal
+// clique normal
 el.onclick = () => {
   const user = contacts.find(c => c.id == el.dataset.id);
   abrirChat(user);
@@ -184,12 +209,12 @@ el.onclick = () => {
 
 }
 
-// 🔥 DELETAR CONTATO
+// =========================
+// DELETAR
+
 function deletarContato(id){
 
-const confirmar = confirm("Excluir este contato?");
-
-if(!confirmar) return;
+if(!confirm("Excluir contato?")) return;
 
 contacts = contacts.filter(c => c.id != id);
 
@@ -232,7 +257,7 @@ currentChat = null;
 }
 
 // =========================
-// ENVIAR TEXTO
+// ENVIAR
 
 document.getElementById("sendMessageBtn").onclick = () => {
 
@@ -351,4 +376,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-                   }
+     }
