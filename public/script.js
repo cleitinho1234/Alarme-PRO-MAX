@@ -28,14 +28,19 @@ currentUser = await res.json();
 localStorage.setItem("userId", currentUser.id);
 }
 
-// 🔥 NOME CORRETO
-if(currentUser.username){
+// 🔥 PRIORIDADE LOCAL (SEU NOME NÃO SOME MAIS)
+const savedName = localStorage.getItem("username");
+
+if(savedName){
+  currentUser.username = savedName;
+} else if(currentUser.username){
   localStorage.setItem("username", currentUser.username);
-} else {
-  const savedName = localStorage.getItem("username");
-  if(savedName){
-    currentUser.username = savedName;
-  }
+}
+
+// 🔥 MOSTRA NO INPUT
+const input = document.getElementById("username");
+if(input && currentUser.username){
+  input.value = currentUser.username;
 }
 
 document.getElementById("userIdDisplay").textContent = currentUser.id;
@@ -57,7 +62,7 @@ setInterval(loadMessages, 1500);
 });
 
 // =========================
-// SALVAR PERFIL (CORRIGIDO)
+// SALVAR PERFIL
 
 document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
 
@@ -98,10 +103,10 @@ body: JSON.stringify({
 
 const updatedUser = await res.json();
 
-// 🔥 ATUALIZA USER GLOBAL
+// 🔥 ATUALIZA USER
 currentUser = updatedUser;
 
-// salva local
+// 🔥 SALVA LOCAL (NUNCA MAIS SOME)
 localStorage.setItem("username", updatedUser.username);
 
 // 🔥 ATUALIZA NOS CONTATOS
@@ -119,7 +124,7 @@ renderContacts();
 }
 
 // =========================
-// ATUALIZAR CONTATOS (CORRIGIDO)
+// ATUALIZAR CONTATOS
 
 async function atualizarContatos(){
 
@@ -273,7 +278,6 @@ if(m.toId == currentUser.id){
 
 }
 
-// auto contato
 if(m.toId == currentUser.id && m.fromId != currentUser.id){
   if(!contacts.some(c => c.id == m.fromId)){
     const resUser = await fetch(`/getUser/${m.fromId}`);
@@ -345,4 +349,4 @@ bubble.appendChild(time);
 div.appendChild(bubble);
 container.appendChild(div);
 
-  }
+}
